@@ -2155,40 +2155,47 @@ class Aplicacion(QMainWindow):
         self.boton_iniciar.setEnabled(False)
         self.boton_cancelar.setEnabled(True)
 
+        # Calcular y mostrar la confirmación en el hilo principal para evitar bloquear la GUI desde un hilo de trabajo.
+        try:
+            if operaciones_previas is not None:
+                ops_para_confirmacion = operaciones_previas
+            else:
+                ops_para_confirmacion = generar_vista_previa(reglas_para_proceso)
+        except Exception as e_preview:
+            registrar_log(f"Error generando vista previa para confirmación: {e_preview}")
+            QMessageBox.critical(self, "Error", f"No se pudo calcular la confirmación previa: {e_preview}")
+            # Resetear estados de interfaz
+            self._procesando = False
+            self.cancel_event = None
+            self.boton_vista_previa.setEnabled(True)
+            self.boton_iniciar.setEnabled(True)
+            self.boton_cancelar.setEnabled(False)
+            return
+
+        cuenta_eliminar = sum(1 for op in ops_para_confirmacion if op.get("duplicado") and op.get("eliminar_duplicados", False))
+        if cuenta_eliminar > 0:
+            mensaje = QMessageBox(self)
+            mensaje.setIcon(QMessageBox.Warning)
+            mensaje.setWindowTitle("Confirmar eliminación de duplicados")
+            mensaje.setText(f"⚠️ Esta operación eliminará {cuenta_eliminar} archivos del origen.")
+            mensaje.setInformativeText("Esta acción no se puede deshacer.")
+            btn_cancel = mensaje.addButton("Cancelar", QMessageBox.RejectRole)
+            btn_delete = mensaje.addButton(f"Eliminar {cuenta_eliminar} archivos", QMessageBox.AcceptRole)
+            mensaje.exec()
+            if mensaje.clickedButton() != btn_delete:
+                # Usuario canceló la confirmación; resetear estados y no iniciar el hilo.
+                self._ui_callback({"tipo": "log", "mensaje": "Operación cancelada por el usuario (confirmación de eliminación)."})
+                self._procesando = False
+                self.cancel_event = None
+                self.boton_vista_previa.setEnabled(True)
+                self.boton_iniciar.setEnabled(True)
+                self.boton_cancelar.setEnabled(False)
+                return
+
         def ejecutar():
             error = None
             cancelado = False
             try:
-                # Antes de comenzar, si hay reglas que eliminarán duplicados, pedir confirmación mostrando el conteo.
-                try:
-                    if operaciones_previas is not None:
-                        ops_para_confirmacion = operaciones_previas
-                    else:
-                        # Generar una vista previa rápida para determinar cuántos archivos serían eliminados.
-                        ops_para_confirmacion = generar_vista_previa(reglas_para_proceso)
-                except Exception as e_preview:
-                    registrar_log(f"Error generando vista previa para confirmación: {e_preview}")
-                    # Mostrar error y abortar el inicio del proceso
-                    self._ui_callback({"tipo": "error", "mensaje": f"No se pudo calcular la confirmación previa: {e_preview}"})
-                    return
-
-                cuenta_eliminar = sum(1 for op in ops_para_confirmacion if op.get("duplicado") and op.get("eliminar_duplicados", False))
-                if cuenta_eliminar > 0:
-                    # Mostrar diálogo modal de confirmación en la GUI
-                    mensaje = QMessageBox(self)
-                    mensaje.setIcon(QMessageBox.Warning)
-                    mensaje.setWindowTitle("Confirmar eliminación de duplicados")
-                    mensaje.setText(f"⚠️ Esta operación eliminará {cuenta_eliminar} archivos del origen.")
-                    mensaje.setInformativeText("Esta acción no se puede deshacer.")
-                    btn_cancel = mensaje.addButton("Cancelar", QMessageBox.RejectRole)
-                    btn_delete = mensaje.addButton(f"Eliminar {cuenta_eliminar} archivos", QMessageBox.AcceptRole)
-                    mensaje.exec()
-                    if mensaje.clickedButton() != btn_delete:
-                        # Usuario canceló la confirmación
-                        self._ui_callback({"tipo": "log", "mensaje": "Operación cancelada por el usuario (confirmación de eliminación)."})
-                        cancelado = True
-                        return
-
                 if operaciones_previas is not None:
                     ejecutar_operaciones(operaciones_previas, ui_callback=self._ui_callback, cancel_event=self.cancel_event)
                 else:
@@ -2196,7 +2203,7 @@ class Aplicacion(QMainWindow):
                 cancelado = self.cancel_event.is_set()
             except Exception as e:
                 registrar_log(f"Error en hilo de procesamiento: {e}")
-                if self.cancel_event.is_set():
+                if self.cancel_event is not None and self.cancel_event.is_set():
                     cancelado = True
                     self._ui_callback({"tipo": "log", "mensaje": "Proceso cancelado por el usuario."})
                 else:

@@ -8,7 +8,7 @@
       "crear_subcarpetas": true,
       "organizar_por_extension": true,
       "organizar_por_fecha": true,
-      "eliminar_duplicados": false,
+      "eliminar_duplicados": true,
       "filtrar_extensiones": true,
       "extensiones": [
         "pdf"
@@ -19,7 +19,7 @@
         "tipo": "parcial",
         "rango": false,
         "dia": null,
-        "mes": 6,
+        "mes": null,
         "año": 2026
       },
       "tamaño_archivo": {
