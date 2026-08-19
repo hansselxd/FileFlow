@@ -107,6 +107,66 @@ def extension_permitida(ruta_archivo, extensiones):
     return extension in extensiones_normalizadas
 
 
+def normalizar_categoria_extension(categoria):
+    categoria = re.sub(r'[<>:"/\\|?*]+', "-", str(categoria).strip())
+    return categoria.strip(" .-")
+
+
+def cargar_biblioteca_extensiones():
+    ruta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "biblioteca.txt")
+    extensiones = {}
+    en_tabla_prioritaria = False
+
+    if not os.path.exists(ruta):
+        return extensiones
+
+    try:
+        with open(ruta, "r", encoding="utf-8") as archivo:
+            lineas = archivo.readlines()
+    except OSError:
+        return extensiones
+
+    patron_extension = re.compile(r"(?<![\w])\.([a-z0-9][a-z0-9._~-]*)", re.IGNORECASE)
+    for linea in lineas:
+        texto = linea.strip()
+        if texto.startswith("//"):
+            en_tabla_prioritaria = texto.lower().startswith("//fileflow")
+            continue
+        if not texto.startswith("|") or texto.count("|") < 2:
+            continue
+
+        columnas = [columna.strip() for columna in texto.strip("|").split("|")]
+        if len(columnas) < 2 or set(columnas[0]) <= {"-", " ", ":"}:
+            continue
+        if "extensión" in columnas[0].lower() or "categoría" in columnas[0].lower():
+            continue
+
+        extensiones_primera_columna = patron_extension.findall(columnas[0])
+        extensiones_segunda_columna = patron_extension.findall(columnas[1])
+        if en_tabla_prioritaria or extensiones_primera_columna:
+            extensiones_encontradas = extensiones_primera_columna
+            categoria = normalizar_categoria_extension(columnas[1])
+        else:
+            extensiones_encontradas = extensiones_segunda_columna
+            categoria = normalizar_categoria_extension(columnas[0])
+
+        if not extensiones_encontradas or not categoria:
+            continue
+        for extension in extensiones_encontradas:
+            extensiones.setdefault(extension.lower(), categoria)
+
+    return extensiones
+
+
+def obtener_categoria_extension(ruta_archivo, biblioteca=None):
+    biblioteca = biblioteca if biblioteca is not None else cargar_biblioteca_extensiones()
+    nombre_archivo = ntpath.basename(str(ruta_archivo).strip()).lower()
+    for extension in sorted(biblioteca, key=len, reverse=True):
+        if nombre_archivo.endswith(f".{extension}"):
+            return biblioteca[extension]
+    return ""
+
+
 def normalizar_condicion_tamano(condicion):
     condicion = condicion if isinstance(condicion, dict) else {}
     activo = condicion.get("activo", False)
@@ -206,6 +266,35 @@ def normalizar_condicion_fecha(condicion):
     return resultado
 
 
+def construir_segmento_fecha(condicion):
+    condicion = normalizar_condicion_fecha(condicion)
+    if not condicion["activo"]:
+        return ""
+
+    def texto_extremo(extremo):
+        dia = extremo.get("dia")
+        mes = extremo.get("mes")
+        año = extremo.get("año")
+        if dia is not None and mes is not None:
+            partes = [f"{dia:02d}", f"{mes:02d}"]
+        elif mes is not None:
+            partes = [MESES[mes - 1]]
+        elif dia is not None:
+            partes = [f"{dia:02d}"]
+        else:
+            partes = []
+        if año is not None:
+            partes.append(str(año))
+        return "/".join(partes) if partes else "Fecha"
+
+    if condicion["tipo"] == "rango":
+        desde = texto_extremo(condicion["desde"])
+        hasta = texto_extremo(condicion["hasta"])
+        return f"Desde {desde} - Hasta {hasta}"
+
+    return texto_extremo(condicion)
+
+
 def obtener_fecha_archivo(ruta_archivo, campo):
     try:
         estadisticas = os.stat(ruta_archivo)
@@ -293,6 +382,8 @@ def normalizar_regla(regla):
             "destino": "",
             "modo": "copy",
             "crear_subcarpetas": True,
+            "organizar_por_extension": False,
+            "organizar_por_fecha": False,
             "eliminar_duplicados": False,
             "filtrar_extensiones": False,
             "extensiones": [],
@@ -314,6 +405,14 @@ def normalizar_regla(regla):
     if isinstance(crear_subcarpetas, str):
         crear_subcarpetas = crear_subcarpetas.strip().lower() in ("1", "true", "yes", "si", "on")
 
+    organizar_por_extension = regla.get("organizar_por_extension", False)
+    if isinstance(organizar_por_extension, str):
+        organizar_por_extension = organizar_por_extension.strip().lower() in ("1", "true", "yes", "si", "on")
+
+    organizar_por_fecha = regla.get("organizar_por_fecha", False)
+    if isinstance(organizar_por_fecha, str):
+        organizar_por_fecha = organizar_por_fecha.strip().lower() in ("1", "true", "yes", "si", "on")
+
     eliminar_duplicados = regla.get("eliminar_duplicados", False)
     if isinstance(eliminar_duplicados, str):
         eliminar_duplicados = eliminar_duplicados.strip().lower() in ("1", "true", "yes", "si", "on")
@@ -332,6 +431,8 @@ def normalizar_regla(regla):
         "destino": normalizar_destino_regla(regla.get("destino", "")),
         "modo": modo,
         "crear_subcarpetas": bool(crear_subcarpetas),
+        "organizar_por_extension": bool(organizar_por_extension),
+        "organizar_por_fecha": bool(organizar_por_fecha),
         "eliminar_duplicados": bool(eliminar_duplicados),
         "filtrar_extensiones": bool(filtrar_extensiones),
         "extensiones": extensiones,
@@ -350,7 +451,11 @@ def regla_tiene_filtro_activo(regla):
 
 def regla_tiene_criterio(regla):
     regla = normalizar_regla(regla)
-    return bool(regla.get("palabras")) or regla_tiene_filtro_activo(regla)
+    return (
+        bool(regla.get("palabras"))
+        or regla_tiene_filtro_activo(regla)
+        or bool(regla.get("organizar_por_extension"))
+    )
 
 
 def guardar_reglas(reglas):
@@ -603,12 +708,14 @@ def copiar_archivo_con_progreso(origen, destino, ui_callback=None, cancel_event=
                 porcentaje = (bytes_copiados / total * 100) if total else 100
                 enviar_progreso(porcentaje)
 
-    except Exception:
+    except Exception as exc:
+        # Registrar el error original y tratar de limpiar el archivo destino parcial si existe.
+        registrar_log(f"Error durante la copia de {origen} -> {destino}: {exc}")
         try:
             if os.path.exists(destino):
                 os.remove(destino)
-        except Exception:
-            pass
+        except (OSError, PermissionError) as cleanup_exc:
+            registrar_log(f"No se pudo eliminar el archivo temporal {destino}: {cleanup_exc}")
         raise
 
     enviar_progreso(100)
@@ -627,8 +734,16 @@ def crear_operacion_analisis(ruta_archivo, regla, indice_regla):
 
     nombre_archivo = os.path.basename(ruta_archivo)
     destino_directorio = os.path.normpath(regla["destino"])
+    if regla.get("organizar_por_extension", False):
+        categoria = obtener_categoria_extension(ruta_archivo)
+        if categoria:
+            destino_directorio = os.path.normpath(os.path.join(destino_directorio, categoria))
     if regla.get("crear_subcarpetas", True) and palabra_coincidente:
-        destino_directorio = os.path.normpath(os.path.join(regla["destino"], palabra_coincidente))
+        destino_directorio = os.path.normpath(os.path.join(destino_directorio, palabra_coincidente))
+    if regla.get("organizar_por_fecha", False):
+        segmento_fecha = construir_segmento_fecha(regla.get("fecha_archivo"))
+        if segmento_fecha:
+            destino_directorio = os.path.normpath(os.path.join(destino_directorio, segmento_fecha))
 
     destino_base = os.path.join(destino_directorio, nombre_archivo)
     duplicado = buscar_duplicado_en_destino(destino_directorio, nombre_archivo, ruta_origen=ruta_archivo)
@@ -867,7 +982,7 @@ def ejecutar_operaciones(operaciones, ui_callback=None, cancel_event=None):
                     os.remove(origen)
                     registrar_log(f"Archivo duplicado detectado. Archivo original eliminado del origen: {archivo}")
                     actualizar_estado(f"Archivo duplicado detectado. Archivo original eliminado del origen: {archivo}")
-                except Exception as exc:
+                except (FileNotFoundError, PermissionError, OSError) as exc:
                     registrar_log(f"Error al eliminar duplicado {archivo}: {exc}")
             else:
                 registrar_log(f"Archivo duplicado detectado. Se mantiene el original en el origen: {archivo}")
@@ -925,9 +1040,10 @@ def ejecutar_operaciones(operaciones, ui_callback=None, cancel_event=None):
                 shutil.move(origen, destino_final)
                 actualizar_actual(100, "100%", f"Movido: {archivo}")
                 registrar_log(f"Archivo movido correctamente: {archivo}")
-        except Exception as exc:
+        except (OSError, shutil.Error, RuntimeError, PermissionError) as exc:
             registrar_log(f"Error al procesar {archivo}: {exc}")
             actualizar_actual(0, "0%", f"Error: {exc}")
+            # Si se ha solicitado cancelación, propagar para que el hilo pueda finalizar correctamente.
             if cancel_event is not None and cancel_event.is_set():
                 raise
 
@@ -1470,6 +1586,8 @@ class Aplicacion(QMainWindow):
         modo_default = (regla or {}).get("modo", "copy")
         eliminar_default = bool((regla or {}).get("eliminar_duplicados", False))
         crear_default = bool((regla or {}).get("crear_subcarpetas", True))
+        organizar_por_extension_default = bool((regla or {}).get("organizar_por_extension", False))
+        organizar_por_fecha_default = bool((regla or {}).get("organizar_por_fecha", False))
         filtrar_extensiones_default = bool((regla or {}).get("filtrar_extensiones", False))
         extensiones_default = ", ".join((regla or {}).get("extensiones", []))
         fecha_default = (regla or {}).get("fecha_archivo", {})
@@ -1543,9 +1661,25 @@ class Aplicacion(QMainWindow):
         var_modo.setCurrentIndex(0 if modo_default == "copy" else 1)
         layout.addWidget(var_modo)
 
+        opciones_carpetas = QHBoxLayout()
         var_crear_subcarpetas = QCheckBox("Crear carpetas automáticamente según la regla")
         var_crear_subcarpetas.setChecked(crear_default)
-        layout.addWidget(var_crear_subcarpetas)
+        opciones_carpetas.addWidget(var_crear_subcarpetas)
+
+        var_organizar_por_fecha = QCheckBox("Organizar automáticamente según la fecha")
+        var_organizar_por_fecha.setChecked(organizar_por_fecha_default)
+        opciones_carpetas.addWidget(var_organizar_por_fecha)
+        opciones_carpetas.addStretch()
+        layout.addLayout(opciones_carpetas)
+
+        var_organizar_por_extension = QCheckBox("Organizar automáticamente según la extensión")
+        var_organizar_por_extension.setChecked(organizar_por_extension_default)
+        layout.addWidget(var_organizar_por_extension)
+        descripcion_extension = QLabel(
+            "Clasifica los archivos según su tipo utilizando la Biblioteca de extensiones."
+        )
+        descripcion_extension.setStyleSheet("color: #475569;")
+        layout.addWidget(descripcion_extension)
 
         var_eliminar_duplicados = QCheckBox("Eliminar archivos del origen si ya existen exactamente iguales en el destino")
         var_eliminar_duplicados.setChecked(eliminar_default)
@@ -1571,6 +1705,8 @@ class Aplicacion(QMainWindow):
                     "destino": normalizar_destino_regla(var_destino.text().strip()),
                     "modo": var_modo.currentData(),
                     "crear_subcarpetas": bool(var_crear_subcarpetas.isChecked()),
+                    "organizar_por_extension": bool(var_organizar_por_extension.isChecked()),
+                    "organizar_por_fecha": bool(var_organizar_por_fecha.isChecked()),
                     "eliminar_duplicados": bool(var_eliminar_duplicados.isChecked()),
                     "filtrar_extensiones": bool(var_filtrar_extensiones.isChecked()),
                     "extensiones": var_extensiones.text().strip(),
@@ -1827,6 +1963,7 @@ class Aplicacion(QMainWindow):
             operaciones = generar_vista_previa(reglas, ui_callback=self._preview_ui_callback, cancel_event=self._preview_cancel_event)
             self._preview_ui_callback({"tipo": "preview_done", "data": operaciones})
         except Exception as exc:
+            registrar_log(f"Error al generar vista previa: {exc}")
             if self._preview_cancel_event.is_set():
                 self._preview_ui_callback({"tipo": "preview_cancelado", "mensaje": "Análisis cancelado"})
             else:
@@ -2022,12 +2159,43 @@ class Aplicacion(QMainWindow):
             error = None
             cancelado = False
             try:
+                # Antes de comenzar, si hay reglas que eliminarán duplicados, pedir confirmación mostrando el conteo.
+                try:
+                    if operaciones_previas is not None:
+                        ops_para_confirmacion = operaciones_previas
+                    else:
+                        # Generar una vista previa rápida para determinar cuántos archivos serían eliminados.
+                        ops_para_confirmacion = generar_vista_previa(reglas_para_proceso)
+                except Exception as e_preview:
+                    registrar_log(f"Error generando vista previa para confirmación: {e_preview}")
+                    # Mostrar error y abortar el inicio del proceso
+                    self._ui_callback({"tipo": "error", "mensaje": f"No se pudo calcular la confirmación previa: {e_preview}"})
+                    return
+
+                cuenta_eliminar = sum(1 for op in ops_para_confirmacion if op.get("duplicado") and op.get("eliminar_duplicados", False))
+                if cuenta_eliminar > 0:
+                    # Mostrar diálogo modal de confirmación en la GUI
+                    mensaje = QMessageBox(self)
+                    mensaje.setIcon(QMessageBox.Warning)
+                    mensaje.setWindowTitle("Confirmar eliminación de duplicados")
+                    mensaje.setText(f"⚠️ Esta operación eliminará {cuenta_eliminar} archivos del origen.")
+                    mensaje.setInformativeText("Esta acción no se puede deshacer.")
+                    btn_cancel = mensaje.addButton("Cancelar", QMessageBox.RejectRole)
+                    btn_delete = mensaje.addButton(f"Eliminar {cuenta_eliminar} archivos", QMessageBox.AcceptRole)
+                    mensaje.exec()
+                    if mensaje.clickedButton() != btn_delete:
+                        # Usuario canceló la confirmación
+                        self._ui_callback({"tipo": "log", "mensaje": "Operación cancelada por el usuario (confirmación de eliminación)."})
+                        cancelado = True
+                        return
+
                 if operaciones_previas is not None:
                     ejecutar_operaciones(operaciones_previas, ui_callback=self._ui_callback, cancel_event=self.cancel_event)
                 else:
                     procesar_archivos(reglas=reglas_para_proceso, ui_callback=self._ui_callback, cancel_event=self.cancel_event)
                 cancelado = self.cancel_event.is_set()
             except Exception as e:
+                registrar_log(f"Error en hilo de procesamiento: {e}")
                 if self.cancel_event.is_set():
                     cancelado = True
                     self._ui_callback({"tipo": "log", "mensaje": "Proceso cancelado por el usuario."})

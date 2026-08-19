@@ -6,19 +6,21 @@
       "destino": "D:\\Nueva carpeta",
       "modo": "copy",
       "crear_subcarpetas": true,
+      "organizar_por_extension": true,
+      "organizar_por_fecha": true,
       "eliminar_duplicados": false,
       "filtrar_extensiones": true,
       "extensiones": [
-        "png"
+        "pdf"
       ],
       "fecha_archivo": {
-        "activo": false,
-        "campo": "modificacion",
+        "activo": true,
+        "campo": "creacion",
         "tipo": "parcial",
         "rango": false,
         "dia": null,
-        "mes": null,
-        "año": null
+        "mes": 6,
+        "año": 2026
       },
       "tamaño_archivo": {
         "activo": false,
