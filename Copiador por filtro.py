@@ -1,5 +1,6 @@
 import hashlib
 import json
+import ntpath
 import os
 import queue
 import re
@@ -10,7 +11,7 @@ import uuid
 from datetime import date, datetime
 
 from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QFont, QIcon, QPixmap
+from PySide6.QtGui import QFont, QIcon, QIntValidator, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
@@ -29,10 +30,12 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QProgressBar,
     QPushButton,
+    QToolButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
+    QMenu,
 )
 
 
@@ -44,16 +47,20 @@ def normalizar_palabras_clave(palabras):
     ]
 
 
+def normalizar_ruta_regla(ruta):
+    if ruta is None:
+        return ""
+
+    ruta = str(ruta).strip().strip('"')
+    if not ruta:
+        return ""
+
+    # ntpath mantiene correctamente las rutas con unidad y los prefijos UNC.
+    return ntpath.normpath(ruta.replace("/", "\\"))
+
+
 def normalizar_destino_regla(destino):
-    if destino is None:
-        return ""
-
-    destino = str(destino).strip()
-    if not destino:
-        return ""
-
-    destino = destino.replace("\\", os.sep).replace("/", os.sep)
-    return os.path.normpath(destino)
+    return normalizar_ruta_regla(destino)
 
 
 def normalizar_extensiones(extensiones):
@@ -98,6 +105,54 @@ def extension_permitida(ruta_archivo, extensiones):
 
     extension = obtener_extension_archivo(ruta_archivo)
     return extension in extensiones_normalizadas
+
+
+def normalizar_condicion_tamano(condicion):
+    condicion = condicion if isinstance(condicion, dict) else {}
+    activo = condicion.get("activo", False)
+    if isinstance(activo, str):
+        activo = activo.strip().lower() in ("1", "true", "si", "yes", "on")
+
+    comparacion = str(condicion.get("comparacion", "mayor")).strip().lower()
+    if comparacion not in ("mayor", "igual", "menor"):
+        comparacion = "mayor"
+
+    try:
+        valor = int(condicion.get("valor", 0))
+    except (TypeError, ValueError):
+        valor = 0
+    valor = max(0, valor)
+
+    unidad = str(condicion.get("unidad", "MB")).strip().upper()
+    if unidad not in ("TB", "GB", "MB", "KB"):
+        unidad = "MB"
+
+    return {
+        "activo": bool(activo),
+        "comparacion": comparacion,
+        "valor": valor,
+        "unidad": unidad,
+    }
+
+
+def archivo_cumple_tamano(ruta_archivo, condicion):
+    condicion = normalizar_condicion_tamano(condicion)
+    if not condicion["activo"]:
+        return True
+
+    try:
+        tamaño_archivo = os.path.getsize(ruta_archivo)
+    except OSError:
+        return False
+
+    multiplicadores = {"KB": 1024, "MB": 1024 ** 2, "GB": 1024 ** 3, "TB": 1024 ** 4}
+    tamaño_requerido = condicion["valor"] * multiplicadores[condicion["unidad"]]
+    comparacion = condicion["comparacion"]
+    if comparacion == "mayor":
+        return tamaño_archivo > tamaño_requerido
+    if comparacion == "igual":
+        return tamaño_archivo == tamaño_requerido
+    return tamaño_archivo < tamaño_requerido
 
 
 MESES = [
@@ -214,7 +269,7 @@ def archivo_cumple_fecha(ruta_archivo, condicion):
 
 def archivo_cumple_regla(ruta_archivo, regla):
     regla = normalizar_regla(regla)
-    if obtener_palabra_clave_coincidente(ruta_archivo, regla["palabras"]) is None:
+    if regla["palabras"] and obtener_palabra_clave_coincidente(ruta_archivo, regla["palabras"]) is None:
         return False
 
     if bool(regla.get("filtrar_extensiones", False)):
@@ -222,6 +277,9 @@ def archivo_cumple_regla(ruta_archivo, regla):
             return False
 
     if not archivo_cumple_fecha(ruta_archivo, regla.get("fecha_archivo")):
+        return False
+
+    if not archivo_cumple_tamano(ruta_archivo, regla.get("tamaño_archivo")):
         return False
 
     return True
@@ -239,6 +297,7 @@ def normalizar_regla(regla):
             "filtrar_extensiones": False,
             "extensiones": [],
             "fecha_archivo": normalizar_condicion_fecha({}),
+            "tamaño_archivo": normalizar_condicion_tamano({}),
         }
 
     palabras = []
@@ -265,10 +324,11 @@ def normalizar_regla(regla):
 
     extensiones = normalizar_extensiones(regla.get("extensiones", []))
     fecha_archivo = normalizar_condicion_fecha(regla.get("fecha_archivo"))
+    tamaño_archivo = normalizar_condicion_tamano(regla.get("tamaño_archivo"))
 
     return {
         "palabras": normalizar_palabras_clave(palabras),
-        "origen": str(regla.get("origen", "")).strip(),
+        "origen": normalizar_ruta_regla(regla.get("origen", "")),
         "destino": normalizar_destino_regla(regla.get("destino", "")),
         "modo": modo,
         "crear_subcarpetas": bool(crear_subcarpetas),
@@ -276,13 +336,30 @@ def normalizar_regla(regla):
         "filtrar_extensiones": bool(filtrar_extensiones),
         "extensiones": extensiones,
         "fecha_archivo": fecha_archivo,
+        "tamaño_archivo": tamaño_archivo,
     }
+
+
+def regla_tiene_filtro_activo(regla):
+    regla = normalizar_regla(regla)
+    tiene_extensiones = bool(regla.get("filtrar_extensiones")) and bool(regla.get("extensiones"))
+    tiene_fecha = bool(regla.get("fecha_archivo", {}).get("activo"))
+    tiene_tamano = bool(regla.get("tamaño_archivo", {}).get("activo"))
+    return tiene_extensiones or tiene_fecha or tiene_tamano
+
+
+def regla_tiene_criterio(regla):
+    regla = normalizar_regla(regla)
+    return bool(regla.get("palabras")) or regla_tiene_filtro_activo(regla)
 
 
 def guardar_reglas(reglas):
     ruta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "reglas.json")
     reglas_limpias = [normalizar_regla(regla) for regla in (reglas or [])]
-    reglas_limpias = [regla for regla in reglas_limpias if regla["palabras"] and regla["origen"] and regla["destino"]]
+    reglas_limpias = [
+        regla for regla in reglas_limpias
+        if regla["origen"] and regla["destino"] and regla_tiene_criterio(regla)
+    ]
 
     with open(ruta, "w", encoding="utf-8") as archivo:
         json.dump({"reglas": reglas_limpias}, archivo, ensure_ascii=False, indent=2)
@@ -308,14 +385,61 @@ def cargar_reglas():
     reglas = datos.get("reglas", [])
     reglas_validas = []
     for regla in reglas:
+        if not isinstance(regla, dict):
+            continue
         regla_normalizada = normalizar_regla(regla)
         if (
-            regla_normalizada["palabras"]
-            and regla_normalizada["origen"]
+            regla_normalizada["origen"]
             and regla_normalizada["destino"]
+            and regla_tiene_criterio(regla_normalizada)
         ):
             reglas_validas.append(regla_normalizada)
 
+    return reglas_validas
+
+
+def guardar_reglas_fflw(ruta, reglas):
+    reglas_limpias = [normalizar_regla(regla) for regla in (reglas or [])]
+    reglas_limpias = [
+        regla for regla in reglas_limpias
+        if regla["origen"] and regla["destino"] and regla_tiene_criterio(regla)
+    ]
+    with open(ruta, "w", encoding="utf-8") as archivo:
+        json.dump(
+            {"formato": "fflw", "version": 1, "reglas": reglas_limpias},
+            archivo,
+            ensure_ascii=False,
+            indent=2,
+        )
+
+
+def cargar_reglas_fflw(ruta):
+    with open(ruta, "r", encoding="utf-8") as archivo:
+        datos = json.load(archivo)
+
+    if isinstance(datos, dict):
+        if datos.get("formato") not in (None, "fflw"):
+            raise ValueError("El archivo no es un paquete de reglas FileFlow válido.")
+        reglas = datos.get("reglas", [])
+    elif isinstance(datos, list):
+        reglas = datos
+    else:
+        raise ValueError("El archivo no contiene una lista de reglas válida.")
+
+    if not isinstance(reglas, list):
+        raise ValueError("El archivo no contiene una lista de reglas válida.")
+
+    reglas_validas = []
+    for regla in reglas:
+        if not isinstance(regla, dict):
+            continue
+        regla_normalizada = normalizar_regla(regla)
+        if (
+            regla_normalizada["origen"]
+            and regla_normalizada["destino"]
+            and regla_tiene_criterio(regla_normalizada)
+        ):
+            reglas_validas.append(regla_normalizada)
     return reglas_validas
 
 
@@ -357,7 +481,9 @@ def obtener_regla_coincidente(ruta_archivo, reglas):
 
     for regla in reglas:
         regla_normalizada = normalizar_regla(regla)
-        if not regla_normalizada["palabras"]:
+        if not regla_normalizada["origen"] or not regla_normalizada["destino"]:
+            continue
+        if not regla_tiene_criterio(regla_normalizada):
             continue
 
         if archivo_cumple_regla(ruta_archivo, regla_normalizada):
@@ -493,7 +619,7 @@ def crear_operacion_analisis(ruta_archivo, regla, indice_regla):
         return None
 
     palabra_coincidente = obtener_palabra_clave_coincidente(ruta_archivo, regla["palabras"])
-    if palabra_coincidente is None:
+    if regla["palabras"] and palabra_coincidente is None:
         return None
 
     if bool(regla.get("filtrar_extensiones", False)) and not extension_permitida(ruta_archivo, regla.get("extensiones", [])):
@@ -501,7 +627,7 @@ def crear_operacion_analisis(ruta_archivo, regla, indice_regla):
 
     nombre_archivo = os.path.basename(ruta_archivo)
     destino_directorio = os.path.normpath(regla["destino"])
-    if regla.get("crear_subcarpetas", True):
+    if regla.get("crear_subcarpetas", True) and palabra_coincidente:
         destino_directorio = os.path.normpath(os.path.join(regla["destino"], palabra_coincidente))
 
     destino_base = os.path.join(destino_directorio, nombre_archivo)
@@ -525,7 +651,7 @@ def crear_operacion_analisis(ruta_archivo, regla, indice_regla):
         "archivo": nombre_archivo,
         "origen": ruta_archivo,
         "regla": indice_regla,
-        "palabra": palabra_coincidente,
+        "palabra": palabra_coincidente or "",
         "modo": regla.get("modo", "copy"),
         "accion": "Mover" if regla.get("modo", "copy") == "move" else "Copiar",
         "destino": destino_directorio,
@@ -538,7 +664,10 @@ def crear_operacion_analisis(ruta_archivo, regla, indice_regla):
 
 def generar_operaciones_analisis(reglas, ui_callback=None, cancel_event=None):
     reglas = [normalizar_regla(regla) for regla in (reglas or [])]
-    reglas = [regla for regla in reglas if regla["palabras"] and regla["origen"] and regla["destino"]]
+    reglas = [
+        regla for regla in reglas
+        if regla["origen"] and regla["destino"] and regla_tiene_criterio(regla)
+    ]
 
     if cancel_event is not None and cancel_event.is_set():
         raise RuntimeError("Proceso cancelado por el usuario.")
@@ -609,7 +738,10 @@ def generar_operaciones_analisis(reglas, ui_callback=None, cancel_event=None):
 
 def procesar_archivos(reglas, ui_callback=None, cancel_event=None):
     reglas = [normalizar_regla(regla) for regla in (reglas or [])]
-    reglas = [regla for regla in reglas if regla["palabras"] and regla["origen"] and regla["destino"]]
+    reglas = [
+        regla for regla in reglas
+        if regla["origen"] and regla["destino"] and regla_tiene_criterio(regla)
+    ]
 
     if cancel_event is not None and cancel_event.is_set():
         raise RuntimeError("Proceso cancelado por el usuario.")
@@ -944,6 +1076,63 @@ class ConstructorFecha(QFrame):
         return normalizar_condicion_fecha(condicion)
 
 
+class ConstructorTamano(QFrame):
+    def __init__(self, condicion=None, parent=None):
+        super().__init__(parent)
+        self.setObjectName("panel")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 10, 12, 10)
+        layout.setSpacing(8)
+
+        self.activado = QCheckBox("Tamaño de archivo")
+        layout.addWidget(self.activado)
+
+        self.contenido = QWidget()
+        contenido_layout = QHBoxLayout(self.contenido)
+        contenido_layout.setContentsMargins(0, 0, 0, 0)
+        contenido_layout.setSpacing(8)
+
+        self.comparacion = QComboBox()
+        self.comparacion.addItem("Mayor", "mayor")
+        self.comparacion.addItem("Igual", "igual")
+        self.comparacion.addItem("Menor", "menor")
+        contenido_layout.addWidget(self.comparacion)
+
+        self.valor = QLineEdit()
+        self.valor.setValidator(QIntValidator(0, 2 ** 31 - 1, self.valor))
+        self.valor.setPlaceholderText("Tamaño")
+        contenido_layout.addWidget(self.valor)
+
+        self.unidad = QComboBox()
+        for unidad in ("TB", "GB", "MB", "KB"):
+            self.unidad.addItem(unidad, unidad)
+        contenido_layout.addWidget(self.unidad)
+        contenido_layout.addStretch()
+        layout.addWidget(self.contenido)
+
+        self.activado.toggled.connect(self._actualizar_estado)
+        self._establecer_condicion(condicion or {})
+
+    def _establecer_condicion(self, condicion):
+        condicion = normalizar_condicion_tamano(condicion)
+        self.activado.setChecked(condicion["activo"])
+        self.comparacion.setCurrentIndex(max(0, self.comparacion.findData(condicion["comparacion"])))
+        self.valor.setText(str(condicion["valor"]))
+        self.unidad.setCurrentIndex(max(0, self.unidad.findData(condicion["unidad"])))
+        self._actualizar_estado()
+
+    def _actualizar_estado(self):
+        self.contenido.setVisible(self.activado.isChecked())
+
+    def obtener_condicion(self):
+        return normalizar_condicion_tamano({
+            "activo": self.activado.isChecked(),
+            "comparacion": self.comparacion.currentData(),
+            "valor": self.valor.text().strip() or 0,
+            "unidad": self.unidad.currentData(),
+        })
+
+
 class Aplicacion(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -1049,9 +1238,22 @@ class Aplicacion(QMainWindow):
         reglas_layout.setContentsMargins(14, 12, 14, 12)
         reglas_layout.setSpacing(10)
 
+        titulo_reglas_row = QHBoxLayout()
         titulo_reglas = QLabel("Reglas de clasificación")
         titulo_reglas.setStyleSheet("font-weight: 700;")
-        reglas_layout.addWidget(titulo_reglas)
+        titulo_reglas_row.addWidget(titulo_reglas)
+
+        menu_reglas = QMenu(self)
+        menu_reglas.addAction("Importar Reglas", self._importar_reglas)
+        menu_reglas.addAction("Exportar Reglas", self._exportar_reglas)
+        titulo_reglas_row.addStretch()
+        boton_menu_reglas = QToolButton()
+        boton_menu_reglas.setText("...")
+        boton_menu_reglas.setToolTip("Importar o exportar reglas")
+        boton_menu_reglas.setMenu(menu_reglas)
+        boton_menu_reglas.setPopupMode(QToolButton.InstantPopup)
+        titulo_reglas_row.addWidget(boton_menu_reglas)
+        reglas_layout.addLayout(titulo_reglas_row)
 
         self.tree_reglas = QTableWidget(0, 3)
         self.tree_reglas.setHorizontalHeaderLabels(["Prioridad", "Palabras clave", "Destino"])
@@ -1131,6 +1333,76 @@ class Aplicacion(QMainWindow):
         self._actualizar_tabla_reglas()
         self._actualizar_resumen_reglas()
 
+    def _exportar_reglas(self):
+        if not self.reglas:
+            QMessageBox.information(self, "Exportar reglas", "No hay reglas creadas para exportar.")
+            return
+
+        ruta, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exportar reglas",
+            "reglas.fflw",
+            "Reglas FileFlow (*.fflw)",
+        )
+        if not ruta:
+            return
+        if not ruta.lower().endswith(".fflw"):
+            ruta += ".fflw"
+
+        try:
+            guardar_reglas_fflw(ruta, self.reglas)
+        except (OSError, TypeError, ValueError) as exc:
+            QMessageBox.critical(self, "Exportar reglas", f"No se pudieron exportar las reglas:\n{exc}")
+            return
+
+        QMessageBox.information(
+            self,
+            "Exportar reglas",
+            f"Se exportaron {len(self.reglas)} reglas correctamente.",
+        )
+
+    def _importar_reglas(self):
+        ruta, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importar reglas",
+            "",
+            "Reglas FileFlow (*.fflw)",
+        )
+        if not ruta:
+            return
+
+        try:
+            reglas_importadas = cargar_reglas_fflw(ruta)
+        except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            QMessageBox.critical(self, "Importar reglas", f"No se pudieron importar las reglas:\n{exc}")
+            return
+
+        def clave_regla(regla):
+            return json.dumps(normalizar_regla(regla), ensure_ascii=False, sort_keys=True)
+
+        reglas_existentes = {clave_regla(regla) for regla in self.reglas}
+        reglas_nuevas = []
+        for regla in reglas_importadas:
+            clave = clave_regla(regla)
+            if clave in reglas_existentes:
+                continue
+            reglas_existentes.add(clave)
+            reglas_nuevas.append(regla)
+
+        if reglas_nuevas:
+            self.reglas.extend(reglas_nuevas)
+            guardar_reglas(self.reglas)
+            self._invalidar_vista_previa()
+            self._actualizar_tabla_reglas()
+            self._actualizar_resumen_reglas()
+
+        QMessageBox.information(
+            self,
+            "Importar reglas",
+            f"Se importaron {len(reglas_nuevas)} reglas nuevas. "
+            f"{len(reglas_importadas) - len(reglas_nuevas)} duplicadas fueron omitidas.",
+        )
+
     def _actualizar_tabla_reglas(self):
         self.tree_reglas.setRowCount(0)
         for indice, regla in enumerate(self.reglas, start=1):
@@ -1153,8 +1425,6 @@ class Aplicacion(QMainWindow):
         palabras = regla.get("palabras", [])
         origen = regla.get("origen", "")
         destino = regla.get("destino", "")
-        if not palabras:
-            raise ValueError("Debes indicar al menos una palabra clave.")
         if not origen:
             raise ValueError("Debes indicar una carpeta de origen.")
         if not destino:
@@ -1166,6 +1436,10 @@ class Aplicacion(QMainWindow):
             regla["extensiones"] = extensiones
         else:
             regla["extensiones"] = []
+        if not palabras and not regla_tiene_filtro_activo(regla):
+            raise ValueError(
+                "Debes indicar una palabra clave o activar al menos un filtro de extensión, fecha o tamaño."
+            )
         for palabra in palabras:
             if not palabra.strip():
                 raise ValueError("Las palabras clave no pueden estar vacías.")
@@ -1187,7 +1461,7 @@ class Aplicacion(QMainWindow):
         layout.setContentsMargins(18, 18, 18, 18)
         layout.setSpacing(10)
 
-        layout.addWidget(QLabel("Palabras clave:"))
+        layout.addWidget(QLabel("Palabras clave (opcional):"))
         entrada_palabras = QLineEdit()
         layout.addWidget(entrada_palabras)
 
@@ -1199,6 +1473,7 @@ class Aplicacion(QMainWindow):
         filtrar_extensiones_default = bool((regla or {}).get("filtrar_extensiones", False))
         extensiones_default = ", ".join((regla or {}).get("extensiones", []))
         fecha_default = (regla or {}).get("fecha_archivo", {})
+        tamaño_default = (regla or {}).get("tamaño_archivo", {})
 
         frame_origen = QFrame()
         origen_layout = QVBoxLayout(frame_origen)
@@ -1255,6 +1530,12 @@ class Aplicacion(QMainWindow):
             lambda: QTimer.singleShot(0, reajustar_tamaño_ventana)
         )
 
+        constructor_tamano = ConstructorTamano(tamaño_default)
+        layout.addWidget(constructor_tamano)
+        constructor_tamano.activado.toggled.connect(
+            lambda: QTimer.singleShot(0, reajustar_tamaño_ventana)
+        )
+
         layout.addWidget(QLabel("Acción:"))
         var_modo = QComboBox()
         var_modo.addItem("Copiar archivos", "copy")
@@ -1294,6 +1575,7 @@ class Aplicacion(QMainWindow):
                     "filtrar_extensiones": bool(var_filtrar_extensiones.isChecked()),
                     "extensiones": var_extensiones.text().strip(),
                     "fecha_archivo": constructor_fecha.obtener_condicion(),
+                    "tamaño_archivo": constructor_tamano.obtener_condicion(),
                 }
                 indice_actual = self.reglas.index(regla) if editar else None
                 regla_validada = self._validar_regla(nueva_regla, indice_actual=indice_actual)
@@ -1452,7 +1734,10 @@ class Aplicacion(QMainWindow):
             QMessageBox.critical(self, "Error", "Debes crear al menos una regla de clasificación.")
             return
         reglas_para_proceso = [normalizar_regla(regla) for regla in self.reglas]
-        reglas_para_proceso = [regla for regla in reglas_para_proceso if regla["palabras"] and regla["origen"] and regla["destino"]]
+        reglas_para_proceso = [
+            regla for regla in reglas_para_proceso
+            if regla["origen"] and regla["destino"] and regla_tiene_criterio(regla)
+        ]
         if not reglas_para_proceso:
             QMessageBox.critical(self, "Error", "Cada regla debe incluir una carpeta de origen y una de destino.")
             return
@@ -1691,7 +1976,10 @@ class Aplicacion(QMainWindow):
             QMessageBox.critical(self, "Error", "Debes crear al menos una regla de clasificación.")
             return
         reglas_para_proceso = [normalizar_regla(regla) for regla in self.reglas]
-        reglas_para_proceso = [regla for regla in reglas_para_proceso if regla["palabras"] and regla["origen"] and regla["destino"]]
+        reglas_para_proceso = [
+            regla for regla in reglas_para_proceso
+            if regla["origen"] and regla["destino"] and regla_tiene_criterio(regla)
+        ]
         if not reglas_para_proceso:
             QMessageBox.critical(self, "Error", "Cada regla debe incluir una carpeta de origen y una de destino.")
             return

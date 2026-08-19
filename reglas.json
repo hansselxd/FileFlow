@@ -1,3 +1,31 @@
 {
-  "reglas": []
+  "reglas": [
+    {
+      "palabras": [],
+      "origen": "C:\\Users\\cARLOS\\Downloads",
+      "destino": "D:\\Nueva carpeta",
+      "modo": "copy",
+      "crear_subcarpetas": true,
+      "eliminar_duplicados": false,
+      "filtrar_extensiones": true,
+      "extensiones": [
+        "png"
+      ],
+      "fecha_archivo": {
+        "activo": false,
+        "campo": "modificacion",
+        "tipo": "parcial",
+        "rango": false,
+        "dia": null,
+        "mes": null,
+        "año": null
+      },
+      "tamaño_archivo": {
+        "activo": false,
+        "comparacion": "mayor",
+        "valor": 0,
+        "unidad": "MB"
+      }
+    }
+  ]
 }
