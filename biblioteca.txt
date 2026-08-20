@@ -1,578 +1,343 @@
+```text
 //FileFlow - Asociaciones prioritarias
+// Las asociaciones de esta sección tienen prioridad sobre cualquier
+// clasificación genérica posterior.
+
+// Adobe Photoshop
 | Extensión | Categoría |
-| --------- | --------- |
-| `.pdf` | Documentos |
-| `.doc`, `.docx`, `.odt`, `.rtf`, `.pages` | Documentos |
-| `.xls`, `.xlsx`, `.ods`, `.numbers` | Hojas de cálculo |
-| `.ppt`, `.pptx`, `.odp`, `.key` | Presentaciones |
+| `.psd`, `.psb`, `.psdt` | Photoshop |
+| `.abr`, `.atn`, `.asl`, `.pat`, `.aco`, `.ase` | Photoshop - Recursos |
+// Adobe Illustrator
+| `.ai`, `.ait`, `.aia` | Illustrator |
+// Adobe InDesign / InCopy
+| `.indd`, `.indt`, `.idml` | InDesign |
+| `.incx`, `.icml`, `.icap` | InCopy |
+// Adobe Premiere / After Effects
+| `.prproj`, `.prel` | Premiere Pro |
+| `.aep`, `.aet`, `.aepx` | After Effects |
+| `.mogrt` | Motion Graphics |
+// Adobe Audition
+| `.sesx`, `.pkf` | Audition |
+// Adobe / Acrobat
+| `.cfa`, `.pek` | Adobe Media |
+| `.acrobatsecuritysettings`, `.joboptions`, `.xmp` | Adobe / Acrobat |
+
+
+// Blender
 | `.blend`, `.blend1`, `.blend2`, `.blend3` | Blender |
-| `.psd`, `.psb`, `.psdt`, `.ai`, `.indd`, `.cdr`, `.afdesign` | Diseño |
-| `.exe`, `.msi`, `.app`, `.apk`, `.deb`, `.rpm` | Programas |
-| `.zip`, `.rar`, `.7z`, `.tar`, `.gz`, `.bz2` | Comprimidos |
+
+
+// 3D y CAD
+// Autodesk 3ds Max
+| `.max` | 3ds Max |
+| `.3ds` | 3ds Max / 3D |
+// Autodesk Maya
+| `.ma`, `.mb`, `.mel` | Maya |
+// Cinema 4D
+| `.c4d`, `.c4dlib` | Cinema 4D |
+// Houdini
+| `.hip`, `.hiplc`, `.hipnc`, `.hda`, `.hdanc` | Houdini |
+// SketchUp
+| `.skp`, `.skb`, `.layout`, `.style` | SketchUp |
+// Rhino / Grasshopper
+| `.gh`, `.ghx` | Grasshopper |
+| `.3dm`, `.rws`, `.rhl` | Rhino |
+// Autodesk Fusion
+| `.f3d`, `.f3z` | Autodesk Fusion |
+// Autodesk Inventor
+| `.ipt`, `.iam`, `.idw` | Autodesk Inventor |
+// AutoCAD
+| `.dwg`, `.dxf`, `.dwt`, `.sv$`, `.lin`, `.ctb`, `.stb` | AutoCAD |
+| `.shx` | AutoCAD - Fuentes/Formas |
+// CAD general / fabricación
+| `.step`, `.stp`, `.iges`, `.igs` | CAD / Intercambio |
+| `.stl`, `.3mf`, `.obj`, `.amf` | Modelado / Fabricación 3D |
+| `.gcode`, `.nc`, `.tap` | CNC / Fabricación |
+
+
+// Affinity
+| `.afdesign` | Affinity Designer |
+| `.afphoto` | Affinity Photo |
+| `.afpub` | Affinity Publisher |
+| `.aftemplate` | Affinity |
+| `.afbrushes`, `.afstyles`, `.afassets`, `.afmacros` | Affinity - Recursos |
+
+
+// Corel
+| `.cdr`, `.cdt`, `.cmx`, `.cpt`, `.fill`, `.shw`, `.clk`, `.ccx` | Corel |
+
+
+// GIMP / Krita / OpenRaster
+| `.xcf` | GIMP |
+| `.ora` | OpenRaster / GIMP / Krita |
+| `.kra`, `.krz` | Krita |
+| `.kra~` | Krita - Backup |
+| `.gbr`, `.gih` | GIMP - Recursos |
+| `.abr` | Photoshop / Krita / GIMP - Pinceles |
+
+
+// Audio profesional
+// Adobe Audition
+| `.sesx` | Audition |
+// Ableton
+| `.als`, `.alp`, `.adg`, `.adv`, `.asd` | Ableton Live |
+// FL Studio
+| `.flp`, `.fst`, `.fsc` | FL Studio |
+// Native Instruments
+| `.nmsv`, `.nki`, `.nkm`, `.nkb`, `.nkp`, `.nkx`, `.nkr` | Native Instruments / Kontakt |
+// Apple
+| `.logicx`, `.logic` | Logic Pro |
+| `.band` | GarageBand |
+// Avid Pro Tools
+| `.ptx`, `.ptf`, `.pts` | Pro Tools |
+// REAPER
+| `.rpp`, `.rpp-bak` | REAPER |
+// Steinberg
+| `.cpr` | Cubase |
+| `.npr` | Nuendo |
+// Bitwig
+| `.bwproject`, `.bwclip` | Bitwig Studio |
+// Audacity
+| `.aup3`, `.aup` | Audacity |
+
+
+// Edición de vídeo
+| `.drp` | DaVinci Resolve |
+| `.veg` | VEGAS Pro |
+| `.fcpbundle` | Final Cut Pro |
+| `.imovielibrary` | iMovie |
+
+
+// Microsoft Office / productividad
+// Word
+| `.docm`, `.dotm`, `.docb` | Word |
+// Excel
+| `.xlsb`, `.xlsm`, `.xltm`, `.xlam`, `.xll` | Excel |
+// PowerPoint
+| `.ppam`, `.potx`, `.potm`, `.sldx`, `.sldm` | PowerPoint |
+// OneNote
+| `.one`, `.onetoc2` | OneNote |
+// Visio
+| `.vsdx`, `.vsdm`, `.vssx`, `.vstx` | Visio |
+// Project
+| `.mpp`, `.mpt` | Microsoft Project |
+// Publisher
+| `.pub` | Microsoft Publisher |
+// Access
+| `.accdb`, `.accde`, `.accdt`, `.adp`, `.accda`, `.accdc` | Microsoft Access |
+
+
+// Apple
+| `.pages` | Apple Pages |
+| `.numbers` | Apple Numbers |
+| `.key`, `.keynote` | Apple Keynote |
+| `.ipa` | iOS / iPadOS |
+| `.ipsw` | Firmware Apple |
+| `.dmg` | Imagen de disco macOS |
+| `.pkg` | Paquete macOS |
+| `.app` | Aplicación macOS |
+| `.framework` | Framework Apple |
+| `.mobileprovision` | Perfil de aprovisionamiento |
+| `.xcodeproj`, `.xcworkspace`, `.pbxproj` | Xcode |
+| `.storyboard`, `.xib` | Xcode - Interfaces |
+
+
+// Desarrollo de software
+// Visual Studio / .NET
+| `.sln`, `.suo`, `.csproj`, `.vbproj`, `.fsproj`, `.vcxproj` | Visual Studio / .NET |
+| `.props`, `.targets`, `.resx`, `.snk` | MSBuild / .NET |
+| `.nupkg`, `.nuspec` | NuGet |
+// Java
+| `.jar`, `.war`, `.ear`, `.class` | Java |
+// Android
+| `.dex`, `.aar`, `.apk` | Android |
+// Python
+| `.whl`, `.egg`, `.pyc`, `.pyo`, `.pyd` | Python |
+// Bibliotecas
+| `.dll` | Windows - Biblioteca |
+| `.so`, `.a`, `.ko` | Linux / Unix - Bibliotecas |
+| `.dylib` | macOS - Biblioteca |
+| `.lib` | C / C++ / Visual Studio |
+
+
+// GIS / geografía
+| `.shp`, `.shx`, `.dbf`, `.prj` | Shapefile / GIS |
+| `.qgz`, `.qgs`, `.qml`, `.qmd` | QGIS |
+| `.gdb` | Esri Geodatabase |
+| `.lyr`, `.lyrx` | ArcGIS - Capas |
+| `.mxd`, `.aprx`, `.sde` | ArcGIS |
+| `.kmz`, `.kml` | Google Earth / GIS |
+| `.ifc` | BIM / Interoperabilidad |
+
+
+// Autodesk Revit / BIM
+| `.rvt`, `.0001.rvt` | Revit |
+| `.rfa`, `.rft` | Revit - Familias |
+| `.rte` | Revit - Plantillas |
+| `.rws` | Revit - Workspace |
+// Navisworks
+| `.nwc`, `.nwd`, `.nwf` | Navisworks |
+
+
+// Máquinas virtuales
+// VMware
+| `.vmdk`, `.vmx`, `.nvram`, `.vmsd`, `.vmsn`, `.vmem` | VMware |
+// VirtualBox
+| `.vdi`, `.vbox`, `.vbox-prev` | VirtualBox |
+// Hyper-V
+| `.vhd`, `.vhdx`, `.avhdx` | Hyper-V |
+// Virtualización general
+| `.ova`, `.ovf` | Virtualización |
+| `.qcow`, `.qcow2` | QEMU / KVM |
+| `.vagrant` | Vagrant |
+
+
+// Electrónica / automatización / PCB
+// Microcontroladores
+| `.hex`, `.elf`, `.bin`, `.uf2` | Firmware / Embedded |
+| `.ino`, `.pde`, `.ino.hex` | Arduino / Processing |
+// PCB
+| `.gbr`, `.drl` | Gerber / PCB |
+| `.kicad_pro`, `.kicad_sch`, `.kicad_pcb`, `.kicad_mod` | KiCad |
+| `.brd`, `.sch`, `.lbr` | Eagle / PCB |
+| `.fzz`, `.fzb`, `.fzm` | Fritzing |
+
+
+// Fuentes y tipografías
+| `.ttf`, `.otf`, `.ttc`, `.otc` | Fuentes |
+| `.woff`, `.woff2` | Fuentes Web |
+| `.pfb`, `.pfm` | PostScript / Type 1 |
+| `.bdf`, `.fon` | Fuentes Bitmap |
+| `.dfont`, `.suit` | Fuentes macOS |
+| `.ufo` | Unified Font Object |
+| `.glyphs`, `.glyphspackage` | Glyphs |
+| `.designspace`, `.fea` | FontTools / OpenType |
+
+
+// E-books y publicación digital
+| `.epub`, `.epub3` | EPUB |
+| `.mobi` | Kindle / E-book |
+| `.azw`, `.azw3`, `.kfx`, `.kpf` | Kindle |
+| `.ibooks` | Apple Books |
+| `.fb2` | FictionBook |
+| `.cbz`, `.cbr`, `.cb7` | Comics |
+| `.djvu` | DjVu |
+
+
+// Videojuegos
+// Unreal Engine
+| `.uasset`, `.umap`, `.upk` | Unreal Engine |
+// Unity
+| `.unity`, `.prefab`, `.asset`, `.meta`, `.resS`, `.resource`, `.bundle` | Unity |
+// FMOD
+| `.fmod`, `.bank` | FMOD |
+// Wwise
+| `.bnk`, `.wem` | Wwise |
+// Valve / Source
+| `.vpk`, `.gcf`, `.acf`, `.manifest` | Valve / Steam |
+| `.bsp` | GoldSrc / Source |
+// Doom / clásicos
+| `.wad` | Videojuegos / Doom |
+| `.pak` | Recursos de videojuegos |
+// Emulación
+| `.rom`, `.sav`, `.srm` | ROM / Partidas |
+| `.xci`, `.nsp` | Nintendo Switch |
+
+
+// Máquinas virtuales / software / paquetes
+| `.nupkg` | NuGet |
+| `.deb` | Debian / Ubuntu |
+| `.rpm` | Fedora / RHEL |
+| `.pkg.tar.zst` | Arch Linux |
+| `.snap` | Snap |
+| `.flatpak` | Flatpak |
+| `.msix`, `.appx` | Windows App Package |
+
+
+// Correo
+| `.eml` | Correo electrónico |
+| `.msg`, `.pst`, `.ost`, `.nk2` | Microsoft Outlook |
+| `.iaf`, `.dbx` | Outlook Express |
+
+
+// Windows / Linux / sistema
+// Windows
+| `.exe` | Programas |
+| `.msi` | Windows Installer |
+| `.msp`, `.mst` | Windows Installer - Actualizaciones |
+| `.dll` | Windows - Biblioteca |
+| `.sys`, `.drv` | Windows - Controladores |
+| `.ocx` | ActiveX |
+| `.cpl` | Panel de control |
+| `.scr` | Salvapantallas / Ejecutable |
+| `.lnk`, `.url` | Accesos directos |
+| `.reg` | Registro de Windows |
+| `.theme`, `.themepack`, `.deskthemepack` | Temas de Windows |
+| `.manifest`, `.mui`, `.cat`, `.inf`, `.pnf` | Windows - Sistema |
+| `.etl`, `.evtx`, `.wer` | Registros / Diagnóstico |
+// Linux / Unix
+| `.desktop` | Lanzador Linux |
+| `.service`, `.socket`, `.mount`, `.timer` | systemd |
+| `.conf` | Configuración |
+| `.lock` | Archivo de bloqueo |
+
+
+// Bases de datos
+// SQLite
+| `.sqlite`, `.sqlite3`, `.db3` | SQLite |
+// Microsoft Access
+| `.accdb`, `.accde` | Microsoft Access |
+// SQL Server
+| `.mdf`, `.ndf`, `.ldf` | SQL Server |
+| `.bak` | Backup / SQL Server |
+// MySQL
+| `.frm`, `.ibd` | MySQL |
+// dBase / FoxPro
+| `.dbf`, `.fpt`, `.cdx`, `.dbc` | dBase / FoxPro |
+// Base de datos genérica
+| `.db` | Base de datos |
+
+
+// Compresión y paquetes
+| `.zip`, `.rar`, `.7z` | Comprimidos |
+| `.tar`, `.gz`, `.bz2`, `.xz`, `.zst` | Compresión / Unix |
+| `.cab` | Cabinet / Windows |
+| `.toast` | Imagen / Paquete |
+| `.nrg` | Imagen de disco Nero |
+| `.bin`, `.cue` | Imagen de disco / CD/DVD |
+
+
+// Discos e imágenes
+| `.iso`, `.img` | Imágenes de disco |
+
+
+// Respaldos y temporales
+| `.bak`, `.backup` | Copias de seguridad |
+| `.old`, `.orig` | Versiones anteriores |
+| `.tmp`, `.temp` | Temporales |
+| `.swp`, `.swo` | Vim - Swap |
+| `.autosave` | Autoguardado |
+| `.cache` | Caché |
+| `.log` | Registros |
+| `.dmp` | Volcado de memoria |
+| `.crash` | Información de fallos |
+| `.part`, `.download`, `.partial` | Descargas incompletas |
+
+
+// Categorías generales
+// Documentos
+| `.pdf` | Documentos |
+| `.doc`, `.docx`, `.odt`, `.rtf` | Documentos |
+// Hojas de cálculo
+| `.xls`, `.xlsx`, `.ods` | Hojas de cálculo |
+// Presentaciones
+| `.ppt`, `.pptx`, `.odp` | Presentaciones |
+// Texto y código
+| `.txt`, `.md`, `.json`, `.xml`, `.yaml`, `.py`, `.js` | Texto / Código |
+// Imágenes
 | `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp`, `.tif`, `.tiff` | Imágenes |
+// Audio genérico
 | `.mp3`, `.wav`, `.flac`, `.ogg`, `.aiff` | Audio |
+// Vídeo genérico
 | `.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`, `.wmv` | Vídeo |
-
-//Básicos
-| Categoría                         | Ejemplos                                                  |
-| --------------------------------- | --------------------------------------------------------- |
-| Documentos                        | `.doc`, `.docx`, `.odt`, `.rtf`, `.pages`                 |
-| Hojas de cálculo                  | `.xls`, `.xlsx`, `.ods`, `.numbers`                       |
-| Presentaciones                    | `.ppt`, `.pptx`, `.odp`, `.key`                           |
-| Texto y código                    | `.txt`, `.md`, `.json`, `.xml`, `.yaml`, `.py`, `.js`     |
-| Imágenes                          | `.jpg`, `.png`, `.gif`, `.webp`, `.psd`, `.ai`, `.xcf`    |
-| Audio                             | `.mp3`, `.wav`, `.flac`, `.ogg`, `.aiff`, `.aup3`         |
-| Vídeo                             | `.mp4`, `.mkv`, `.avi`, `.mov`, `.webm`, `.wmv`           |
-| Comprimidos                       | `.zip`, `.rar`, `.7z`, `.tar`, `.gz`, `.bz2`              |
-| Ejecutables                       | `.exe`, `.msi`, `.app`, `.apk`, `.deb`, `.rpm`            |
-| Bases de datos                    | `.db`, `.sqlite`, `.mdb`, `.accdb`, `.dbf`                |
-| CAD/3D                            | `.dwg`, `.dxf`, `.step`, `.stl`, `.blend`, `.max`, `.3ds` |
-| Diseño gráfico                    | `.psd`, `.ai`, `.indd`, `.cdr`, `.afdesign`               |
-| Edición de vídeo                  | `.prproj`, `.aep`, `.drp`, `.veg`, `.fcpxml`              |
-| Edición de audio                  | `.aup3`, `.als`, `.flp`, `.logicx`, `.sesx`               |
-| Libros electrónicos               | `.epub`, `.mobi`, `.azw`, `.azw3`, `.fb2`                 |
-| Máquinas virtuales                | `.vmdk`, `.vdi`, `.vhd`, `.vhdx`, `.ova`, `.ovf`          |
-| Discos/ISO                        | `.iso`, `.img`, `.dmg`, `.toast`                          |
-| Fuentes                           | `.ttf`, `.otf`, `.woff`, `.woff2`                         |
-| Juegos                            | `.sav`, `.pak`, `.wad`, `.rom`, `.iso`                    |
-| Desarrollo de software            | `.sln`, `.csproj`, `.vcxproj`, `.jar`, `.war`, `.class`   |
-| Configuración                     | `.ini`, `.cfg`, `.conf`, `.reg`, `.plist`                 |
-| Sistemas Linux/Unix               | `.so`, `.deb`, `.rpm`, `.service`, `.desktop`             |
-
-//Específicos
-| Extensión                  | Tipo / función                | Programa asociado             |
-| -------------------------- | ----------------------------- | ----------------------------- |
-| `.psd`                     | Proyecto de imagen            | Adobe Photoshop               |
-| `.psb`                     | Documento grande de Photoshop | Adobe Photoshop               |
-| `.psdt`                    | Plantilla de Photoshop        | Adobe Photoshop               |
-| `.abr`                     | Pinceles                      | Adobe Photoshop               |
-| `.atn`                     | Acciones                      | Adobe Photoshop               |
-| `.asl`                     | Estilos de capa               | Adobe Photoshop               |
-| `.pat`                     | Patrones                      | Adobe Photoshop               |
-| `.aco`                     | Muestras de color             | Adobe Photoshop               |
-| `.ase`                     | Intercambio de muestras       | Adobe Photoshop / Illustrator |
-| `.ai`                      | Proyecto vectorial            | Adobe Illustrator             |
-| `.ait`                     | Plantilla de Illustrator      | Adobe Illustrator             |
-| `.aia`                     | Paquete de acciones           | Adobe Illustrator             |
-| `.indd`                    | Documento de maquetación      | Adobe InDesign                |
-| `.indt`                    | Plantilla de InDesign         | Adobe InDesign                |
-| `.idml`                    | Markup de InDesign            | Adobe InDesign                |
-| `.incx`                    | Interchange antiguo           | Adobe InCopy/InDesign         |
-| `.icml`                    | Documento de InCopy           | Adobe InCopy                  |
-| `.icap`                    | Paquete de InCopy             | Adobe InCopy                  |
-| `.prproj`                  | Proyecto de vídeo             | Adobe Premiere Pro            |
-| `.prel`                    | Proyecto antiguo de Premiere  | Adobe Premiere                |
-| `.aep`                     | Proyecto de composición       | Adobe After Effects           |
-| `.aet`                     | Plantilla de After Effects    | Adobe After Effects           |
-| `.aepx`                    | Proyecto XML de After Effects | Adobe After Effects           |
-| `.mogrt`                   | Plantilla gráfica animada     | After Effects / Premiere Pro  |
-| `.sesx`                    | Sesión de audio               | Adobe Audition                |
-| `.pkf`                     | Forma de onda de Audition     | Adobe Audition                |
-| `.cfa`                     | Audio conformado              | Adobe Media/Video             |
-| `.pek`                     | Pico de forma de onda         | Adobe Premiere/Audition       |
-| `.acrobatsecuritysettings` | Configuración de seguridad    | Adobe Acrobat                 |
-| `.joboptions`              | Opciones de trabajo PDF       | Adobe Distiller               |
-| `.xmp`                     | Metadatos/extensiones XMP     | Adobe y otros                 |
-| `.blend`  | Proyecto 3D                         | Blender                       |
-| `.blend1` | Copia de respaldo de `.blend`       | Blender                       |
-| `.blend2` | Copia de respaldo adicional         | Blender                       |
-| `.blend3` | Copia de respaldo adicional         | Blender                       |
-| `.max`    | Escena 3D                           | Autodesk 3ds Max              |
-| `.max`    | Proyecto 3D                         | 3ds Max                       |
-| `.3ds`    | Escena 3D antigua                   | 3ds Max / múltiples programas |
-| `.ma`     | Escena Maya ASCII                   | Autodesk Maya                 |
-| `.mb`     | Escena Maya binaria                 | Autodesk Maya                 |
-| `.mel`    | Script de Maya                      | Autodesk Maya                 |
-| `.c4d`    | Proyecto 3D                         | Cinema 4D                     |
-| `.c4dlib` | Biblioteca de Cinema 4D             | Cinema 4D                     |
-| `.hip`    | Proyecto Houdini                    | SideFX Houdini                |
-| `.hiplc`  | Proyecto Houdini Apprentice/License | Houdini                       |
-| `.hipnc`  | Proyecto Houdini no comercial       | Houdini                       |
-| `.hda`    | Digital Asset                       | Houdini                       |
-| `.hdanc`  | Digital Asset no comercial          | Houdini                       |
-| `.skp`    | Modelo 3D                           | SketchUp                      |
-| `.skb`    | Copia de seguridad                  | SketchUp                      |
-| `.layout` | Documento de presentación           | SketchUp LayOut               |
-| `.style`  | Estilo                              | SketchUp                      |
-| `.gh`     | Definición de Grasshopper           | Rhino/Grasshopper             |
-| `.ghx`    | Definición XML de Grasshopper       | Rhino/Grasshopper             |
-| `.3dm`    | Modelo CAD/NURBS                    | Rhinoceros                    |
-| `.rws`    | Workspace                           | Rhino                         |
-| `.rhl`    | Archivo relacionado con Rhino       | Rhino                         |
-| `.f3d`    | Diseño 3D                           | Autodesk Fusion               |
-| `.f3z`    | Archivo ensamblado                  | Autodesk Fusion               |
-| `.ipt`    | Pieza CAD                           | Autodesk Inventor             |
-| `.iam`    | Ensamblaje CAD                      | Autodesk Inventor             |
-| `.idw`    | Dibujo                              | Autodesk Inventor             |
-| `.dwg`    | Dibujo CAD                          | AutoCAD y compatibles         |
-| `.dxf`    | Intercambio CAD                     | AutoCAD y compatibles         |
-| `.dwt`    | Plantilla CAD                | AutoCAD           |
-| `.sv$`    | Autoguardado CAD             | AutoCAD           |
-| `.bak`    | Copia de seguridad           | Muchos programas  |
-| `.pat`    | Patrón de sombreado CAD      | AutoCAD           |
-| `.lin`    | Definición de tipos de línea | AutoCAD           |
-| `.shx`    | Fuente/forma compilada       | AutoCAD           |
-| `.ctb`    | Estilos de trazado           | AutoCAD           |
-| `.stb`    | Estilos de trazado           | AutoCAD           |
-| `.step`   | Modelo CAD                   | Varios            |
-| `.stp`    | Modelo CAD STEP              | Varios            |
-| `.iges`   | Intercambio CAD              | Varios            |
-| `.igs`    | Intercambio CAD              | Varios            |
-| `.stl`    | Geometría para impresión 3D  | CAD/slicers       |
-| `.3mf`    | Modelo/fabricación 3D        | Slicers/CAD       |
-| `.obj`    | Modelo 3D                    | Muchos programas  |
-| `.amf`    | Fabricación aditiva          | Slicers           |
-| `.gcode`  | Instrucciones CNC/impresión  | Slicers/CNC       |
-| `.nc`     | Control numérico             | CNC               |
-| `.tap`    | Programa CNC                 | Controladores CNC |
-| `.dxf`    | Geometría/intercambio CAD    | AutoCAD/CAD       |
-| `.afdesign`   | Documento vectorial   | Affinity Designer  |
-| `.afphoto`    | Documento fotográfico | Affinity Photo     |
-| `.afpub`      | Documento editorial   | Affinity Publisher |
-| `.aftemplate` | Plantilla Affinity    | Affinity           |
-| `.afbrushes`  | Pinceles              | Affinity           |
-| `.afstyles`   | Estilos               | Affinity           |
-| `.afassets`   | Assets                | Affinity           |
-| `.afmacros`   | Macros                | Affinity           |
-| `.cdr`    | Dibujo vectorial     | CorelDRAW         |
-| `.cdt`    | Plantilla            | CorelDRAW         |
-| `.cmx`    | Metarchivo/vectorial | CorelDRAW         |
-| `.cpt`    | Imagen/edición       | Corel PHOTO-PAINT |
-| `.pat`    | Patrón               | CorelDRAW         |
-| `.fill`   | Relleno              | CorelDRAW         |
-| `.shw`    | Presentación         | Corel             |
-| `.clk`    | Proyecto gráfico     | Corel             |
-| `.ccx`    | Macro/componente     | CorelDRAW         |
-| `.xcf`    | Proyecto de imagen          | GIMP                              |
-| `.ora`    | OpenRaster                  | GIMP/Krita                        |
-| `.kra`    | Proyecto de pintura         | Krita                             |
-| `.kra~`   | Copia de respaldo           | Krita                             |
-| `.krz`    | Formato comprimido de Krita | Krita                             |
-| `.abr`    | Pinceles                    | Photoshop/Krita/GIMP              |
-| `.gbr`    | Pincel                      | GIMP                              |
-| `.gih`    | Pincel animado              | GIMP                              |
-| `.pat`    | Patrón                      | GIMP                              |
-| `.ora`    | Imagen con capas            | GIMP/Krita                        |
-| `.asl`    | Estilos                     | Photoshop/Krita en ciertos flujos |
-| `.aup3`      | Proyecto de audio         | Audacity                   |
-| `.aup`       | Proyecto antiguo          | Audacity                   |
-| `.als`       | Proyecto                  | Ableton Live               |
-| `.alp`       | Pack de Ableton           | Ableton Live               |
-| `.adg`       | Grupo de dispositivos     | Ableton Live               |
-| `.adv`       | Preset/dispositivo        | Ableton Live               |
-| `.asd`       | Análisis de audio         | Ableton Live               |
-| `.flp`       | Proyecto                  | FL Studio                  |
-| `.fst`       | Estado/preset             | FL Studio                  |
-| `.fsc`       | Script                    | FL Studio                  |
-| `.nmsv`      | Proyecto/sonido           | Native Instruments         |
-| `.nki`       | Instrumento               | Native Instruments Kontakt |
-| `.nkm`       | Multi-instrumento         | Kontakt                    |
-| `.nkb`       | Banco                     | Kontakt                    |
-| `.nkp`       | Preset                    | Kontakt                    |
-| `.logicx`    | Proyecto                  | Apple Logic Pro            |
-| `.logic`     | Proyecto antiguo          | Logic Pro                  |
-| `.band`      | Proyecto                  | GarageBand                 |
-| `.sesx`      | Sesión                    | Adobe Audition             |
-| `.ptx`       | Sesión                    | Avid Pro Tools             |
-| `.ptf`       | Sesión antigua            | Pro Tools                  |
-| `.pts`       | Sesión antigua            | Pro Tools                  |
-| `.rpp`       | Proyecto                  | REAPER                     |
-| `.rpp-bak`   | Backup                    | REAPER                     |
-| `.cpr`       | Proyecto                  | Steinberg Cubase           |
-| `.csh`       | Archivo de datos/proyecto | Cubase                     |
-| `.npr`       | Proyecto                  | Steinberg Nuendo           |
-| `.bwproject` | Proyecto                  | Bitwig Studio              |
-| `.bwclip`    | Clip                      | Bitwig Studio              |
-| `.docm`    | Documento con macros    | Word                |
-| `.dotm`    | Plantilla con macros    | Word                |
-| `.docb`    | Documento binario       | Word                |
-| `.xlsb`    | Libro binario           | Excel               |
-| `.xlsm`    | Libro con macros        | Excel               |
-| `.xltm`    | Plantilla con macros    | Excel               |
-| `.xlam`    | Complemento             | Excel               |
-| `.xll`     | Complemento compilado   | Excel               |
-| `.ppam`    | Complemento             | PowerPoint          |
-| `.potx`    | Plantilla               | PowerPoint          |
-| `.potm`    | Plantilla con macros    | PowerPoint          |
-| `.sldx`    | Diapositiva individual  | PowerPoint          |
-| `.sldm`    | Diapositiva con macros  | PowerPoint          |
-| `.one`     | Cuaderno                | OneNote             |
-| `.onetoc2` | Índice de cuaderno      | OneNote             |
-| `.vsdx`    | Diagrama                | Visio               |
-| `.vsdm`    | Visio con macros        | Visio               |
-| `.vssx`    | Stencil                 | Visio               |
-| `.vstx`    | Plantilla               | Visio               |
-| `.mpp`     | Proyecto                | Microsoft Project   |
-| `.mpt`     | Plantilla               | Microsoft Project   |
-| `.pub`     | Publicación             | Microsoft Publisher |
-| `.accdb`   | Base de datos           | Microsoft Access    |
-| `.accde`   | Base compilada          | Microsoft Access    |
-| `.accdt`   | Plantilla               | Microsoft Access    |
-| `.mdb`     | Base de datos antigua   | Microsoft Access    |
-| `.adp`     | Proyecto Access antiguo | Microsoft Access    |
-| `.sln`     | Solución                     | Visual Studio       |
-| `.suo`     | Datos de usuario de solución | Visual Studio       |
-| `.csproj`  | Proyecto C#/.NET             | Visual Studio/.NET  |
-| `.vbproj`  | Proyecto VB.NET              | Visual Studio       |
-| `.fsproj`  | Proyecto F#                  | Visual Studio/.NET  |
-| `.vcxproj` | Proyecto C++                 | Visual Studio       |
-| `.props`   | Propiedades de compilación   | MSBuild             |
-| `.targets` | Targets de MSBuild           | MSBuild             |
-| `.resx`    | Recursos .NET                | Visual Studio/.NET  |
-| `.snk`     | Strong Name Key              | .NET                |
-| `.nupkg`   | Paquete NuGet                | NuGet               |
-| `.nuspec`  | Especificación NuGet         | NuGet               |
-| `.jar`     | Paquete Java                 | Java                |
-| `.war`     | Aplicación web Java          | Java                |
-| `.ear`     | Enterprise Application       | Java EE             |
-| `.class`   | Bytecode Java                | JVM                 |
-| `.dex`     | Bytecode Android             | Android             |
-| `.aar`     | Biblioteca Android           | Android             |
-| `.apk`     | Aplicación Android           | Android             |
-| `.ipa`     | Aplicación Apple             | iOS/iPadOS          |
-| `.whl`     | Paquete Python               | Python              |
-| `.egg`     | Paquete Python antiguo       | Python              |
-| `.pyc`     | Bytecode Python              | Python              |
-| `.pyo`     | Bytecode optimizado antiguo  | Python              |
-| `.pyd`     | Extensión binaria Python     | Python              |
-| `.so`      | Biblioteca compartida        | Linux/Unix          |
-| `.dylib`   | Biblioteca dinámica          | macOS               |
-| `.dll`     | Biblioteca dinámica          | Windows             |
-| `.lib`     | Biblioteca                   | Visual Studio/C/C++ |
-| `.sqlite`  | Base SQLite                 | SQLite               |
-| `.sqlite3` | Base SQLite                 | SQLite               |
-| `.db`      | Base de datos genérica      | Depende del programa |
-| `.db3`     | Base SQLite/variante        | Depende              |
-| `.mdb`     | Base de datos               | Microsoft Access     |
-| `.accdb`   | Base de datos               | Microsoft Access     |
-| `.accde`   | Base compilada              | Microsoft Access     |
-| `.mdf`     | Base de datos               | Microsoft SQL Server |
-| `.ndf`     | Archivo secundario          | SQL Server           |
-| `.ldf`     | Registro de transacciones   | SQL Server           |
-| `.bak`     | Backup                      | SQL Server y otros   |
-| `.frm`     | Definición de tabla antigua | MySQL                |
-| `.ibd`     | Tablespace InnoDB           | MySQL                |
-| `.dbf`     | Base dBase                  | dBase/FoxPro y otros |
-| `.fpt`     | Memo                        | FoxPro               |
-| `.cdx`     | Índice                      | FoxPro               |
-| `.dbc`     | Contenedor de base          | Visual FoxPro        |
-| `.accda`   | Complemento                 | Access               |
-| `.accdc`   | Base de datos firmada       | Access               |
-| `.rvt`      | Proyecto BIM             | Autodesk Revit |
-| `.rfa`      | Familia                  | Autodesk Revit |
-| `.rft`      | Plantilla de familia     | Autodesk Revit |
-| `.rte`      | Plantilla de proyecto    | Autodesk Revit |
-| `.rws`      | Workspace                | Revit          |
-| `.0001.rvt` | Copia/backup de proyecto | Revit          |
-| `.dwg`      | CAD                      | AutoCAD/Revit  |
-| `.dxf`      | CAD                      | AutoCAD/Revit  |
-| `.ifc`      | BIM interoperable        | Revit/BIM      |
-| `.nwc`      | Cache/modelo Navisworks  | Navisworks     |
-| `.nwd`      | Archivo publicado        | Navisworks     |
-| `.nwf`      | Archivo federado         | Navisworks     |
-| `.shp`    | Shapefile              | ArcGIS/QGIS         |
-| `.shx`    | Índice Shapefile       | GIS                 |
-| `.dbf`    | Atributos Shapefile    | GIS                 |
-| `.prj`    | Sistema de coordenadas | GIS                 |
-| `.qgz`    | Proyecto comprimido    | QGIS                |
-| `.qgs`    | Proyecto               | QGIS                |
-| `.qml`    | Estilo de capa         | QGIS                |
-| `.qmd`    | Metadatos              | QGIS                |
-| `.gdb`    | Geodatabase            | Esri ArcGIS         |
-| `.lyr`    | Capa                   | ArcGIS              |
-| `.lyrx`   | Capa moderna           | ArcGIS Pro          |
-| `.mxd`    | Documento de mapa      | ArcMap              |
-| `.aprx`   | Proyecto               | ArcGIS Pro          |
-| `.sde`    | Conexión a geodatabase | ArcGIS              |
-| `.kmz`    | KML comprimido         | Google Earth/GIS    |
-| `.kml`    | Datos geográficos      | Google Earth/GIS    |
-| `.vmdk`      | Disco virtual           | VMware                 |
-| `.vmx`       | Configuración de VM     | VMware                 |
-| `.nvram`     | NVRAM virtual           | VMware                 |
-| `.vmsd`      | Metadata/snapshot       | VMware                 |
-| `.vmsn`      | Estado/snapshot         | VMware                 |
-| `.vmem`      | Memoria virtual         | VMware                 |
-| `.vdi`       | Disco virtual           | VirtualBox             |
-| `.vbox`      | Configuración           | VirtualBox             |
-| `.vbox-prev` | Backup de configuración | VirtualBox             |
-| `.vhd`       | Disco virtual           | Hyper-V/Virtual PC     |
-| `.vhdx`      | Disco virtual moderno   | Hyper-V                |
-| `.avhdx`     | Disco diferencial       | Hyper-V                |
-| `.ova`       | Appliance virtual       | VMware/VirtualBox/etc. |
-| `.ovf`       | Descripción de VM       | Virtualización         |
-| `.qcow2`     | Disco virtual           | QEMU/KVM               |
-| `.qcow`      | Disco virtual           | QEMU                   |
-| `.vagrant`   | Metadata/configuración  | Vagrant                |
-
-//VIDEOJUEGOS
-| Extensión   | Tipo / función         | Asociado frecuentemente con |
-| ----------- | ---------------------- | --------------------------- |
-| `.sav`      | Partida guardada       | Muchos juegos               |
-| `.pak`      | Paquete de recursos    | Unreal Engine y otros       |
-| `.uasset`   | Asset                  | Unreal Engine               |
-| `.umap`     | Mapa/nivel             | Unreal Engine               |
-| `.upk`      | Paquete Unreal antiguo | Unreal Engine               |
-| `.wad`      | Datos/niveles          | Doom y otros                |
-| `.bsp`      | Mapa/nivel             | GoldSrc/Source              |
-| `.vpk`      | Paquete                | Valve Source                |
-| `.gcf`      | Game Cache             | Steam antiguo               |
-| `.acf`      | Configuración/metadata | Steam                       |
-| `.manifest` | Manifest               | Steam                       |
-| `.unity`    | Escena                 | Unity                       |
-| `.prefab`   | Prefab                 | Unity                       |
-| `.asset`    | Asset                  | Unity                       |
-| `.meta`     | Metadata               | Unity                       |
-| `.resS`     | Datos de recursos      | Unity                       |
-| `.resource` | Recursos               | Unity                       |
-| `.bundle`   | AssetBundle            | Unity                       |
-| `.pak`      | Recursos empaquetados  | Muchos motores              |
-| `.rom`      | Imagen de ROM          | Emuladores                  |
-| `.sav`      | Save                   | Emuladores                  |
-| `.srm`      | Save/estado            | Emuladores                  |
-| `.iso`      | Imagen de disco        | Consolas/PC                 |
-| `.xci`      | Imagen de juego        | Nintendo Switch             |
-| `.nsp`      | Paquete de software    | Nintendo Switch             |
-
-//Máquinas, electrónica y automatización
-| Extensión    | Tipo / función     | Programa/ecosistema    |
-| ------------ | ------------------ | ---------------------- |
-| `.hex`       | Firmware/programa  | Microcontroladores     |
-| `.elf`       | Ejecutable/enlace  | Embedded/Linux         |
-| `.bin`       | Binario/firmware   | Muchos dispositivos    |
-| `.uf2`       | Firmware           | Microcontroladores     |
-| `.ino`       | Sketch             | Arduino IDE            |
-| `.pde`       | Sketch antiguo     | Arduino/Processing     |
-| `.ino.hex`   | Firmware compilado | Arduino                |
-| `.gbr`       | Gerber PCB         | Diseño/fabricación PCB |
-| `.drl`       | Drill PCB          | Fabricación PCB        |
-| `.kicad_pro` | Proyecto           | KiCad                  |
-| `.kicad_sch` | Esquemático        | KiCad                  |
-| `.kicad_pcb` | PCB                | KiCad                  |
-| `.kicad_mod` | Huella             | KiCad                  |
-| `.brd`       | Diseño de PCB      | Eagle y otros          |
-| `.sch`       | Esquemático        | Eagle/otros            |
-| `.lbr`       | Biblioteca         | Eagle                  |
-| `.fzz`       | Proyecto           | Fritzing               |
-| `.fzb`       | Bin de partes      | Fritzing               |
-| `.fzm`       | Módulo             | Fritzing               |
-
-//Fuentes y tipografias
-| Extensión        | Tipo                       | Programa/sistema          |
-| ---------------- | -------------------------- | ------------------------- |
-| `.ttf`           | TrueType                   | Sistemas operativos       |
-| `.otf`           | OpenType                   | Sistemas operativos       |
-| `.woff`          | Web Open Font              | Navegadores               |
-| `.woff2`         | Web Open Font 2            | Navegadores               |
-| `.ttc`           | TrueType Collection        | Windows/macOS             |
-| `.otc`           | OpenType Collection        | Sistemas modernos         |
-| `.pfb`           | PostScript Type 1          | Sistemas antiguos         |
-| `.pfm`           | Métricas de fuente         | Windows/Type 1            |
-| `.bdf`           | Bitmap Distribution Format | Unix/X11                  |
-| `.fon`           | Fuente bitmap              | Windows                   |
-| `.dfont`         | Data Fork Font             | macOS                     |
-| `.suit`          | Suitcase Font              | Mac clásico               |
-| `.ufo`           | Unified Font Object        | Herramientas tipográficas |
-| `.glyphs`        | Proyecto de fuentes        | Glyphs                    |
-| `.glyphspackage` | Proyecto de fuentes        | Glyphs                    |
-| `.designspace`   | Espacio variable           | FontTools                 |
-| `.fea`           | Feature OpenType           | Herramientas tipográficas |
-
-//E-books y publicación digital
-| Extensión | Tipo                | Programa                   |
-| --------- | ------------------- | -------------------------- |
-| `.epub`   | Libro electrónico   | Calibre, Apple Books, etc. |
-| `.epub3`  | EPUB 3              | Lectores compatibles       |
-| `.mobi`   | E-book              | Kindle/Calibre             |
-| `.azw`    | Kindle eBook        | Amazon Kindle              |
-| `.azw3`   | Kindle KF8          | Kindle                     |
-| `.kfx`    | Kindle Format       | Kindle                     |
-| `.kpf`    | Kindle Package      | Kindle Create              |
-| `.ibooks` | Libro Apple antiguo | Apple iBooks               |
-| `.fb2`    | FictionBook         | Calibre y lectores         |
-| `.cbz`    | Comic comprimido    | Lectores de cómics         |
-| `.cbr`    | Comic RAR           | Lectores de cómics         |
-| `.cb7`    | Comic 7-Zip         | Lectores compatibles       |
-| `.djvu`   | Documento escaneado | DjVu                       |
-
-//Compresión, paquetes e imágenes de disco
-| Extensión      | Tipo                  | Programa/ecosistema |
-| -------------- | --------------------- | ------------------- |
-| `.zip`         | Archivo comprimido    | Muchos              |
-| `.rar`         | Archivo comprimido    | WinRAR/compatibles  |
-| `.7z`          | Archivo comprimido    | 7-Zip               |
-| `.tar`         | Archivo empaquetado   | Unix/Linux          |
-| `.gz`          | Compresión gzip       | Unix/Linux          |
-| `.bz2`         | Compresión bzip2      | Unix/Linux          |
-| `.xz`          | Compresión XZ         | Linux/Unix          |
-| `.zst`         | Compresión Zstandard  | Linux/varios        |
-| `.cab`         | Cabinet               | Windows             |
-| `.msi`         | Instalador            | Windows             |
-| `.msix`        | Paquete de aplicación | Windows             |
-| `.appx`        | Paquete de aplicación | Windows             |
-| `.deb`         | Paquete Debian        | Debian/Ubuntu       |
-| `.rpm`         | Paquete RPM           | Fedora/RHEL/etc.    |
-| `.pkg.tar.zst` | Paquete Arch          | Arch Linux          |
-| `.snap`        | Paquete Snap          | Linux               |
-| `.flatpak`     | Paquete Flatpak       | Linux               |
-| `.dmg`         | Imagen de disco       | macOS               |
-| `.iso`         | Imagen ISO            | Multiplataforma     |
-| `.img`         | Imagen de disco       | Multiplataforma     |
-| `.toast`       | Imagen de disco       | Roxio/macOS         |
-| `.nrg`         | Imagen de disco       | Nero                |
-| `.bin/.cue`    | Imagen + pistas       | CD/DVD/varios       |
-
-//Correo Outlook
-| Extensión | Tipo                            | Programa          |
-| --------- | ------------------------------- | ----------------- |
-| `.eml`    | Mensaje de correo               | Muchos clientes   |
-| `.msg`    | Mensaje de Outlook              | Microsoft Outlook |
-| `.pst`    | Archivo de datos                | Microsoft Outlook |
-| `.ost`    | Caché de correo                 | Microsoft Outlook |
-| `.nk2`    | Caché de autocompletado antiguo | Outlook           |
-| `.iaf`    | Configuración de cuenta         | Outlook Express   |
-| `.dbx`    | Carpeta de correo               | Outlook Express   |
-
-//Windows/Linux
-| Extensión        | Tipo                           | Programa/sistema  |
-| ---------------- | ------------------------------ | ----------------- |
-| `.exe`           | Ejecutable                     | Windows           |
-| `.dll`           | Biblioteca                     | Windows           |
-| `.sys`           | Controlador/archivo de sistema | Windows           |
-| `.drv`           | Driver antiguo                 | Windows           |
-| `.ocx`           | Control ActiveX                | Windows           |
-| `.cpl`           | Elemento del Panel de control  | Windows           |
-| `.scr`           | Salvapantallas/ejecutable      | Windows           |
-| `.msi`           | Instalador                     | Windows           |
-| `.msp`           | Parche                         | Windows Installer |
-| `.mst`           | Transformación MSI             | Windows Installer |
-| `.lnk`           | Acceso directo                 | Windows           |
-| `.url`           | Acceso directo a Internet      | Windows           |
-| `.reg`           | Datos del Registro             | Windows           |
-| `.theme`         | Tema                           | Windows           |
-| `.themepack`     | Paquete de tema                | Windows           |
-| `.deskthemepack` | Paquete de tema                | Windows           |
-| `.manifest`      | Manifest                       | Windows/software  |
-| `.mui`           | Recursos multilingües          | Windows           |
-| `.cat`           | Catálogo de seguridad          | Windows           |
-| `.inf`           | Información de instalación     | Windows           |
-| `.pnf`           | Precompiled INF                | Windows           |
-| `.etl`           | Event Trace Log                | Windows           |
-| `.evtx`          | Registro de eventos            | Windows           |
-| `.wer`           | Informe de errores             | Windows           |
-| `.so`       | Biblioteca compartida | Linux/Unix     |
-| `.a`        | Biblioteca estática   | Unix           |
-| `.ko`       | Módulo del kernel     | Linux          |
-| `.deb`      | Paquete               | Debian         |
-| `.rpm`      | Paquete               | Red Hat/Fedora |
-| `.AppImage` | Aplicación portable   | Linux          |
-| `.desktop`  | Lanzador              | Linux          |
-| `.service`  | Unidad de systemd     | Linux          |
-| `.socket`   | Unidad systemd        | Linux          |
-| `.mount`    | Unidad systemd        | Linux          |
-| `.timer`    | Unidad systemd        | Linux          |
-| `.conf`     | Configuración         | Muchos         |
-| `.lock`     | Archivo de bloqueo    | Muchos         |
-| `.pages`           | Documento                   | Apple Pages     |
-| `.numbers`         | Hoja de cálculo             | Apple Numbers   |
-| `.key`             | Presentación                | Apple Keynote   |
-| `.keynote`         | Presentación                | Keynote         |
-| `.fcpbundle`       | Biblioteca de vídeo         | Final Cut Pro   |
-| `.logicx`          | Proyecto musical            | Logic Pro       |
-| `.band`            | Proyecto musical            | GarageBand      |
-| `.imovielibrary`   | Biblioteca de vídeo         | iMovie          |
-| `.ipa`             | Aplicación iOS/iPadOS       | Apple           |
-| `.ipsw`            | Firmware                    | iPhone/iPad/Mac |
-| `.dmg`             | Imagen de disco             | macOS           |
-| `.pkg`             | Paquete instalable          | macOS           |
-| `.app`             | Aplicación                  | macOS           |
-| `.framework`       | Framework                   | macOS/iOS       |
-| `.mobileprovision` | Perfil de aprovisionamiento | Xcode           |
-| `.xcodeproj`       | Proyecto                    | Xcode           |
-| `.xcworkspace`     | Workspace                   | Xcode           |
-| `.pbxproj`         | Proyecto interno de Xcode   | Xcode           |
-| `.storyboard`      | Interfaz                    | Xcode           |
-| `.xib`             | Interfaz                    | Xcode           |
-
-//Respaldo y Temporal
-| Extensión   | Significado típico                         |
-| ----------- | ------------------------------------------ |
-| `.bak`      | Copia de seguridad                         |
-| `.backup`   | Copia de seguridad                         |
-| `.old`      | Versión anterior                           |
-| `.orig`     | Original/respaldo                          |
-| `.tmp`      | Temporal                                   |
-| `.temp`     | Temporal                                   |
-| `.swp`      | Archivo swap de Vim                        |
-| `.swo`      | Archivo swap de Vim                        |
-| `~`         | Backup temporal usado por varios programas |
-| `.autosave` | Autoguardado                               |
-| `.cache`    | Caché                                      |
-| `.log`      | Registro                                   |
-| `.dmp`      | Volcado de memoria/datos                   |
-| `.crash`    | Información de fallo                       |
-| `.lock`     | Bloqueo                                    |
-| `.part`     | Descarga incompleta                        |
-| `.download` | Descarga incompleta                        |
-| `.partial`  | Archivo incompleto                         |
-
-//Especiales
-| Extensión      | Asociada principalmente con       |
-| -------------- | --------------------------------- |
-| `.blend1`      | Blender — backup                  |
-| `.kra~`        | Krita — backup                    |
-| `.ghx`         | Grasshopper/Rhino                 |
-| `.hda`         | Houdini Digital Asset             |
-| `.hiplc`       | Houdini                           |
-| `.nki`         | Native Instruments Kontakt        |
-| `.nkm`         | Kontakt Multi                     |
-| `.adg`         | Ableton Live                      |
-| `.als`         | Ableton Live                      |
-| `.flp`         | FL Studio                         |
-| `.fst`         | FL Studio                         |
-| `.rpp`         | REAPER                            |
-| `.cpr`         | Cubase                            |
-| `.npr`         | Nuendo                            |
-| `.ptx`         | Pro Tools                         |
-| `.aup3`        | Audacity                          |
-| `.drp`         | DaVinci Resolve                   |
-| `.veg`         | VEGAS Pro                         |
-| `.fcpbundle`   | Final Cut Pro                     |
-| `.f3d`         | Autodesk Fusion                   |
-| `.rvt`         | Autodesk Revit                    |
-| `.rfa`         | Revit Family                      |
-| `.nwc`         | Navisworks                        |
-| `.nwd`         | Navisworks                        |
-| `.nwf`         | Navisworks                        |
-| `.qgz`         | QGIS                              |
-| `.aprx`        | ArcGIS Pro                        |
-| `.mxd`         | ArcMap                            |
-| `.lyrx`        | ArcGIS Pro                        |
-| `.kicad_pro`   | KiCad                             |
-| `.kicad_sch`   | KiCad                             |
-| `.kicad_pcb`   | KiCad                             |
-| `.fzz`         | Fritzing                          |
-| `.xcodeproj`   | Xcode                             |
-| `.xcworkspace` | Xcode                             |
-| `.pbxproj`     | Xcode                             |
-| `.csproj`      | Visual Studio/.NET                |
-| `.sln`         | Visual Studio                     |
-| `.nupkg`       | NuGet                             |
-| `.whl`         | Python                            |
-| `.pyd`         | Python                            |
-| `.nki`         | Kontakt                           |
-| `.nkx`         | Kontakt — contenido de biblioteca |
-| `.nkr`         | Kontakt — recursos                |
-| `.uasset`      | Unreal Engine                     |
-| `.umap`        | Unreal Engine                     |
-| `.unity`       | Unity                             |
-| `.prefab`      | Unity                             |
-| `.resS`        | Unity                             |
-| `.fmod`        | FMOD                              |
-| `.bank`        | FMOD                              |
-| `.bnk`         | Wwise                             |
-| `.wem`         | Wwise                             |
-| `.pak`         | Muchos motores de videojuegos     |
-| `.vpk`         | Valve/Source                      |
-| `.gcf`         | Steam antiguo                     |
-| `.xci`         | Nintendo Switch                   |
-| `.nsp`         | Nintendo Switch                   |
+```
