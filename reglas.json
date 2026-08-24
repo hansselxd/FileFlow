@@ -5,29 +5,29 @@
       "origen": "C:\\Users\\cARLOS\\Downloads",
       "destino": "D:\\Nueva carpeta",
       "modo": "copy",
-      "crear_subcarpetas": true,
-      "organizar_por_extension": true,
-      "organizar_por_fecha": true,
-      "eliminar_duplicados": true,
+      "crear_subcarpetas": false,
+      "eliminar_duplicados": false,
       "filtrar_extensiones": true,
       "extensiones": [
-        "pdf"
+        "exe"
       ],
       "fecha_archivo": {
-        "activo": true,
-        "campo": "creacion",
+        "activo": false,
+        "campo": "acceso",
         "tipo": "parcial",
         "rango": false,
-        "dia": null,
-        "mes": null,
-        "año": 2026
+        "dia": 2,
+        "mes": 2,
+        "año": 1902
       },
       "tamaño_archivo": {
         "activo": false,
-        "comparacion": "mayor",
+        "comparacion": "menor",
         "valor": 0,
         "unidad": "MB"
-      }
+      },
+      "organizar_por_extension": true,
+      "organizar_por_fecha": false
     }
   ]
 }
