@@ -620,7 +620,7 @@ def copiar_archivo_con_progreso(origen, destino, ui_callback=None, cancel_event=
     enviar_progreso(100)
 
 
-def crear_operacion_analisis(ruta_archivo, regla, indice_regla):
+def crear_operacion_analisis(ruta_archivo, regla, indice_regla, biblioteca=None):
     if not os.path.isfile(ruta_archivo):
         return None
     palabra_coincidente = obtener_palabra_clave_coincidente(ruta_archivo, regla["palabras"])
@@ -635,7 +635,9 @@ def crear_operacion_analisis(ruta_archivo, regla, indice_regla):
     if regla.get("organizar_por_extension", False):
         ext = obtener_extension_archivo(ruta_archivo)
         if ext:
-            destino_directorio = os.path.normpath(os.path.join(regla["destino"], ext.upper()))
+            # Usar categoría de la biblioteca si está disponible, si no, extensión en mayúsculas
+            categoria = biblioteca.get(ext, ext.upper()) if biblioteca else ext.upper()
+            destino_directorio = os.path.normpath(os.path.join(regla["destino"], categoria))
 
     if regla.get("organizar_por_fecha", False):
         fecha = obtener_fecha_archivo(ruta_archivo, "modificacion")
@@ -679,7 +681,7 @@ def crear_operacion_analisis(ruta_archivo, regla, indice_regla):
     }
 
 
-def generar_operaciones_analisis(reglas, ui_callback=None, cancel_event=None):
+def generar_operaciones_analisis(reglas, ui_callback=None, cancel_event=None, biblioteca=None):
     reglas = [normalizar_regla(regla) for regla in (reglas or [])]
     reglas = [
         regla for regla in reglas
@@ -730,7 +732,7 @@ def generar_operaciones_analisis(reglas, ui_callback=None, cancel_event=None):
                     continue
                 if not archivo_cumple_regla(ruta_archivo, regla):
                     continue
-                operacion = crear_operacion_analisis(ruta_archivo, regla, indice_regla)
+                operacion = crear_operacion_analisis(ruta_archivo, regla, indice_regla, biblioteca)
                 if operacion is None:
                     continue
                 operaciones.append(operacion)
@@ -741,7 +743,7 @@ def generar_operaciones_analisis(reglas, ui_callback=None, cancel_event=None):
     return operaciones
 
 
-def procesar_archivos(reglas, ui_callback=None, cancel_event=None):
+def procesar_archivos(reglas, ui_callback=None, cancel_event=None, biblioteca=None):
     reglas = [normalizar_regla(regla) for regla in (reglas or [])]
     reglas = [
         regla for regla in reglas
@@ -776,7 +778,7 @@ def procesar_archivos(reglas, ui_callback=None, cancel_event=None):
     for index, regla in enumerate(reglas, start=1):
         registrar_log(f"{index}. {', '.join(regla['palabras'])} -> {regla['origen']} -> {regla['destino']}")
 
-    operaciones = generar_operaciones_analisis(reglas, ui_callback=ui_callback, cancel_event=cancel_event)
+    operaciones = generar_operaciones_analisis(reglas, ui_callback=ui_callback, cancel_event=cancel_event, biblioteca=biblioteca)
     total = len(operaciones)
     registrar_log(f"Operaciones preparadas: {total}")
     enviar({"tipo": "total", "valor": total})
@@ -795,8 +797,8 @@ def procesar_archivos(reglas, ui_callback=None, cancel_event=None):
     return ejecutar_operaciones(operaciones, ui_callback=ui_callback, cancel_event=cancel_event)
 
 
-def generar_vista_previa(reglas, ui_callback=None, cancel_event=None):
-    return generar_operaciones_analisis(reglas, ui_callback=ui_callback, cancel_event=cancel_event)
+def generar_vista_previa(reglas, ui_callback=None, cancel_event=None, biblioteca=None):
+    return generar_operaciones_analisis(reglas, ui_callback=ui_callback, cancel_event=cancel_event, biblioteca=biblioteca)
 
 
 def ejecutar_operaciones(operaciones, ui_callback=None, cancel_event=None):
@@ -1725,19 +1727,20 @@ class Aplicacion(QMainWindow):
 
         self._preview_hilo = threading.Thread(
             target=self._generar_preview_en_hilo,
-            args=(reglas_para_proceso,),
+            args=(reglas_para_proceso, self.biblioteca_completa),
             daemon=True,
             name="HiloPreview"
         )
         self._preview_hilo.start()
         self._procesar_cola_preview()
 
-    def _generar_preview_en_hilo(self, reglas):
+    def _generar_preview_en_hilo(self, reglas, biblioteca):
         try:
             operaciones = generar_vista_previa(
                 reglas,
                 ui_callback=self._preview_ui_callback,
                 cancel_event=self._preview_cancel_event,
+                biblioteca=biblioteca,
             )
             self._preview_ui_callback({"tipo": "preview_done", "data": operaciones})
         except Exception as exc:
@@ -2193,7 +2196,7 @@ class Aplicacion(QMainWindow):
         buttons = QHBoxLayout()
         buttons.addStretch(1)
         cancel = self._crear_boton("Cancelar", ventana.reject, ghost=True)
-        save = self._crear_boton("Guardar regla", None, primary=True)  # callback se asigna después
+        save = self._crear_boton("Guardar regla", None, primary=True)
         buttons.addWidget(cancel)
         buttons.addWidget(save)
         layout.addLayout(buttons)
@@ -2811,7 +2814,7 @@ class Aplicacion(QMainWindow):
 
         if operaciones_previas is None:
             try:
-                ops_para_confirmacion = generar_vista_previa(reglas_para_proceso)
+                ops_para_confirmacion = generar_vista_previa(reglas_para_proceso, biblioteca=self.biblioteca_completa)
             except Exception as exc:
                 QMessageBox.critical(self, "Error", f"No se pudo preparar la ejecución:\n{exc}")
                 return
@@ -2871,6 +2874,7 @@ class Aplicacion(QMainWindow):
                         reglas=reglas_para_proceso,
                         ui_callback=self._ui_callback,
                         cancel_event=self.cancel_event,
+                        biblioteca=self.biblioteca_completa,
                     )
                 cancelado = self.cancel_event.is_set()
             except Exception as exc:

@@ -13,16 +13,16 @@
       ],
       "fecha_archivo": {
         "activo": false,
-        "campo": "acceso",
+        "campo": "modificacion",
         "tipo": "parcial",
         "rango": false,
-        "dia": 2,
-        "mes": 2,
-        "año": 1902
+        "dia": null,
+        "mes": null,
+        "año": null
       },
       "tamaño_archivo": {
         "activo": false,
-        "comparacion": "menor",
+        "comparacion": "mayor",
         "valor": 0,
         "unidad": "MB"
       },
