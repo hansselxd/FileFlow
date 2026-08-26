@@ -10,8 +10,8 @@ import time
 import uuid
 from datetime import date, datetime
 
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QFont, QIcon, QIntValidator, QPixmap
+from PySide6.QtCore import QTimer, Qt, QSize
+from PySide6.QtGui import QFont, QIcon, QIntValidator, QPixmap, QPainter
 from PySide6.QtWidgets import (
     QApplication,
     QAbstractItemView,
@@ -1171,18 +1171,18 @@ class FolderDropLineEdit(QLineEdit):
 
 class Aplicacion(QMainWindow):
     NAV_ITEMS = (
-        ("🏠", "Inicio", "Inicio"),
-        ("✨", "Organizar", "Organizar"),
-        ("📋", "Reglas", "Reglas"),
-        ("📚", "Biblioteca", "Biblioteca"),
-        ("🧠", "IA", "IA"),
-        ("📜", "Historial", "Historial"),
-        ("⚙", "Ajustes", "Ajustes"),
+        ("inicio.png", "Inicio", "Inicio"),
+        ("organizar.png", "Organizar", "Organizar"),
+        ("reglas.png", "Reglas", "Reglas"),
+        ("biblioteca.png", "Biblioteca", "Biblioteca"),
+        ("ia.png", "IA", "IA"),
+        ("historial.png", "Historial", "Historial"),
+        ("ajustes.png", "Ajustes", "Ajustes"),
     )
 
     def __init__(self):
         super().__init__()
-        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feather.png")
+        icon_path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), "Iconos"), "pluma.png")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         self.setWindowTitle("FileFlow")
@@ -1253,6 +1253,7 @@ class Aplicacion(QMainWindow):
                 border: none;
                 border-radius: 10px;
                 padding: 11px 14px;
+                padding-left: 20px;
                 color: #cbd5e1;
                 background: transparent;
                 font-size: 13px;
@@ -1382,14 +1383,18 @@ class Aplicacion(QMainWindow):
         layout.setSpacing(8)
 
         brand_row = QHBoxLayout()
+        brand_row.setSpacing(15)
+        brand_row.setContentsMargins(0, 0, 0, 0)
         icon = QLabel()
-        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "feather.png")
+        icon_path = os.path.join(os.path.join(os.path.dirname(os.path.abspath(__file__)), "Iconos"), "pluma.png")
         if os.path.exists(icon_path):
-            pixmap = QPixmap(icon_path).scaled(34, 34, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            pixmap = QPixmap(icon_path).scaled(50, 50, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             icon.setPixmap(pixmap)
-        brand_row.addWidget(icon)
+        icon.setFixedSize(50, 50)
+        brand_row.addWidget(icon, 0, Qt.AlignVCenter)
 
         brand_col = QVBoxLayout()
+        brand_col.setSpacing(2)
         brand = QLabel("FileFlow")
         brand.setObjectName("brand")
         brand_col.addWidget(brand)
@@ -1400,16 +1405,37 @@ class Aplicacion(QMainWindow):
         layout.addLayout(brand_row)
         layout.addSpacing(18)
 
-        for emoji, label, page_name in self.NAV_ITEMS:
-            button = QPushButton(f"{emoji}   {label}")
+        icon_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Iconos")
+
+        for icon_name, label, page_name in self.NAV_ITEMS:
+            button = QPushButton(f"    {label}")
             button.setObjectName("nav")
             button.setProperty("active", False)
             button.clicked.connect(lambda checked=False, p=page_name: self._mostrar_pagina(p))
+
+            icon_path = os.path.join(icon_dir, icon_name)
+            if os.path.exists(icon_path):
+                original_icon = QIcon(icon_path)
+                # Recolorear a blanco
+                pixmap = original_icon.pixmap(QSize(20, 20))
+                if not pixmap.isNull():
+                    painter = QPainter(pixmap)
+                    painter.setCompositionMode(QPainter.CompositionMode_SourceIn)
+                    painter.fillRect(pixmap.rect(), Qt.white)
+                    painter.end()
+                    white_icon = QIcon(pixmap)
+                    button.setIcon(white_icon)
+                else:
+                    button.setIcon(original_icon)
+                button.setIconSize(QSize(20, 20))
+            else:
+                # Fallback: sin icono
+                pass
+
             self._navigation_buttons[page_name] = button
             self._page_names[button] = page_name
             layout.addWidget(button)
-            if label == "Historial":
-                layout.addSpacing(10)
+            layout.addSpacing(10)
 
         layout.addStretch(1)
         version = QLabel("FileFlow\nVersión 2 • UI renovada")
@@ -1586,7 +1612,7 @@ class Aplicacion(QMainWindow):
             usuario = os.environ.get("USERNAME") or os.environ.get("USER") or ""
         except Exception:
             usuario = ""
-        return f"{momento}{', ' + usuario if usuario else ''} 👋"
+        return f"{momento}{', ' + usuario if usuario else ''}"
 
     def _actualizar_resumen_inicio(self):
         origenes = set()
