@@ -407,7 +407,11 @@ def regla_tiene_filtro_activo(regla):
 
 def regla_tiene_criterio(regla):
     regla = normalizar_regla(regla)
-    return bool(regla.get("palabras")) or regla_tiene_filtro_activo(regla)
+    return (
+        bool(regla.get("palabras"))
+        or regla_tiene_filtro_activo(regla)
+        or bool(regla.get("organizar_por_extension"))
+    )
 
 
 def guardar_reglas(reglas):
@@ -2000,16 +2004,39 @@ class Aplicacion(QMainWindow):
     def _actualizar_tabla_reglas(self):
         if not hasattr(self, "reglas_cards_layout"):
             return
+        
         while self.reglas_cards_layout.count() > 0:
             item = self.reglas_cards_layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
+
         if not self.reglas:
             empty = QFrame()
             empty.setObjectName("card")
             el = QVBoxLayout(empty)
-            el.addWidget(QLabel("📋"), 0, Qt.AlignCenter)
+
+            # Icono de reglas
+            icon_label = QLabel()
+            icon_path = os.path.join(
+                os.path.dirname(os.path.abspath(__file__)),
+                "Iconos",
+                "reglas.png"
+            )
+
+            if os.path.exists(icon_path):
+                pixmap = QPixmap(icon_path).scaled(
+                48,
+                48,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+                )
+                icon_label.setPixmap(pixmap)
+
+            icon_label.setAlignment(Qt.AlignCenter)
+            icon_label.setFixedHeight(60)
+            el.addWidget(icon_label)
+
             t = QLabel("No tienes reglas configuradas")
             t.setStyleSheet("font-size:18px; font-weight:800;")
             t.setAlignment(Qt.AlignCenter)
