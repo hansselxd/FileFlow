@@ -555,6 +555,100 @@ def calcular_hash_archivo(ruta_archivo, chunk_size=1024 * 1024):
     return sha256.hexdigest()
 
 
+def crear_metadatos_operacion(origen, destino, accion, operation_id=None):
+    """Construye la evidencia verificable de una operación ya completada."""
+    return {
+        "operation_id": operation_id or uuid.uuid4().hex,
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "action": accion,
+        "source": origen,
+        "destination": destino,
+        "size": os.path.getsize(destino),
+        "sha256": calcular_hash_archivo(destino),
+        "status": "success",
+    }
+
+
+def analizar_reversion(operaciones, cancel_event=None, ui_callback=None):
+    resultados = []
+    for operacion in operaciones or []:
+        if cancel_event is not None and cancel_event.is_set():
+            raise RuntimeError("Análisis de reversión cancelado por el usuario.")
+        origen = operacion.get("source") or operacion.get("origen")
+        destino = operacion.get("destination") or operacion.get("destino_final")
+        accion = operacion.get("action") or operacion.get("modo")
+        esperado_tamaño = operacion.get("size")
+        esperado_hash = operacion.get("sha256")
+        resultado = dict(operacion)
+        resultado["status"] = "unsafe"
+        resultado["path"] = destino
+        if not origen or not destino or accion not in ("copy", "move") or not esperado_hash:
+            resultado["status"] = "unsafe"
+        elif not os.path.isfile(destino):
+            resultado["status"] = "missing"
+        else:
+            try:
+                tamaño_actual = os.path.getsize(destino)
+                hash_actual = calcular_hash_archivo(destino)
+            except (OSError, ValueError):
+                tamaño_actual = None
+                hash_actual = None
+            if tamaño_actual != esperado_tamaño or hash_actual != esperado_hash:
+                resultado["status"] = "modified"
+            elif accion == "copy":
+                resultado["status"] = "safe"
+            elif os.path.exists(origen):
+                try:
+                    resultado["status"] = (
+                        "already_reverted"
+                        if os.path.isfile(origen)
+                        and os.path.getsize(origen) == esperado_tamaño
+                        and calcular_hash_archivo(origen) == esperado_hash
+                        else "conflict"
+                    )
+                except (OSError, ValueError):
+                    resultado["status"] = "conflict"
+            else:
+                resultado["status"] = "safe"
+        resultados.append(resultado)
+        if ui_callback is not None:
+            ui_callback({"tipo": "reversion_item", "operacion": resultado})
+    return resultados
+
+
+def ejecutar_reversion(resultados, ui_callback=None, cancel_event=None):
+    seguras = [item for item in resultados if item.get("status") == "safe"]
+    revertidas = []
+
+    def enviar(tipo, **datos):
+        if ui_callback is not None:
+            ui_callback({"tipo": tipo, **datos})
+
+    for indice, operacion in enumerate(seguras, start=1):
+        if cancel_event is not None and cancel_event.is_set():
+            raise RuntimeError("Reversión cancelada por el usuario.")
+        origen = operacion["source"]
+        destino = operacion["destination"]
+        accion = operacion["action"]
+        try:
+            if accion == "copy":
+                os.remove(destino)
+            else:
+                if os.path.exists(origen):
+                    raise FileExistsError(origen)
+                os.makedirs(os.path.dirname(origen), exist_ok=True)
+                shutil.move(destino, origen)
+            revertida = dict(operacion)
+            revertida["status"] = "reverted"
+            revertidas.append(revertida)
+            enviar("log", mensaje=f"Revertido: {os.path.basename(destino)}")
+        except (OSError, shutil.Error) as exc:
+            enviar("log", mensaje=f"No se pudo revertir {os.path.basename(destino)}: {exc}")
+        enviar("actual", valor=(indice / len(seguras) * 100) if seguras else 100,
+               texto=f"{indice}/{len(seguras)} revertidos")
+    return revertidas
+
+
 def buscar_duplicado_en_destino(destino, nombre_archivo, ruta_origen=None, tamaño=None):
     if not os.path.isdir(destino):
         return None
@@ -698,18 +792,11 @@ def generar_operaciones_analisis(reglas, ui_callback=None, cancel_event=None, bi
 
     operaciones = []
     archivos_vistos = set()
-    total_archivos = 0
-    for regla in reglas:
-        origen = regla["origen"]
-        if not os.path.isdir(origen):
-            continue
-        for _, _, lista_archivos in os.walk(origen):
-            total_archivos += len(lista_archivos)
-
     if ui_callback is not None:
-        ui_callback({"tipo": "analisis", "valor": 0, "texto": "0 archivos analizados"})
+        ui_callback({"tipo": "analisis_indeterminado"})
 
     archivos_analizados = 0
+    ultimo_progreso = time.monotonic()
     for indice_regla, regla in enumerate(reglas, start=1):
         if cancel_event is not None and cancel_event.is_set():
             raise RuntimeError("Proceso cancelado por el usuario.")
@@ -719,19 +806,17 @@ def generar_operaciones_analisis(reglas, ui_callback=None, cancel_event=None, bi
         for raiz, _, lista_archivos in os.walk(origen):
             if cancel_event is not None and cancel_event.is_set():
                 raise RuntimeError("Proceso cancelado por el usuario.")
-            for nombre in sorted(lista_archivos):
+            for nombre in lista_archivos:
                 ruta_archivo = os.path.join(raiz, nombre)
                 archivos_analizados += 1
-                if total_archivos:
-                    porcentaje = min(100, int((archivos_analizados / total_archivos) * 100))
-                else:
-                    porcentaje = 100
-                if ui_callback is not None:
+                ahora = time.monotonic()
+                if ui_callback is not None and ahora - ultimo_progreso >= 0.2:
                     ui_callback({
                         "tipo": "analisis",
-                        "valor": porcentaje,
+                        "valor": 0,
                         "texto": f"{archivos_analizados} archivos analizados"
                     })
+                    ultimo_progreso = ahora
                 if ruta_archivo in archivos_vistos:
                     continue
                 if not archivo_cumple_regla(ruta_archivo, regla):
@@ -743,6 +828,11 @@ def generar_operaciones_analisis(reglas, ui_callback=None, cancel_event=None, bi
                 archivos_vistos.add(ruta_archivo)
 
     if ui_callback is not None:
+        ui_callback({
+            "tipo": "analisis",
+            "valor": 100,
+            "texto": f"{archivos_analizados} archivos analizados",
+        })
         ui_callback({"tipo": "preview_total", "valor": len(operaciones)})
     return operaciones
 
@@ -919,6 +1009,7 @@ def ejecutar_operaciones(operaciones, ui_callback=None, cancel_event=None):
                 if os.path.exists(destino_final):
                     destino_final = obtener_nombre_unico(destino_directorio, archivo)
                 copiar_archivo_con_progreso(origen, destino_final, ui_callback=ui_callback, cancel_event=cancel_event)
+                datos_operacion = crear_metadatos_operacion(origen, destino_final, "copy", operacion.get("id"))
                 actualizar_actual(100, "100%", f"Copiado: {archivo}")
                 registrar_log(f"Archivo copiado correctamente: {archivo}")
             elif modo == "move":
@@ -928,8 +1019,10 @@ def ejecutar_operaciones(operaciones, ui_callback=None, cancel_event=None):
                 if os.path.exists(destino_final):
                     destino_final = obtener_nombre_unico(destino_directorio, archivo)
                 shutil.move(origen, destino_final)
+                datos_operacion = crear_metadatos_operacion(origen, destino_final, "move", operacion.get("id"))
                 actualizar_actual(100, "100%", f"Movido: {archivo}")
                 registrar_log(f"Archivo movido correctamente: {archivo}")
+            enviar({"tipo": "operacion_completada", "operacion": datos_operacion})
         except Exception as exc:
             registrar_log(f"Error al procesar {archivo}: {exc}")
             actualizar_actual(0, "0%", f"Error: {exc}")
@@ -1194,7 +1287,7 @@ class Aplicacion(QMainWindow):
         self.setMinimumSize(1000, 680)
 
         self._procesando = False
-        self._cola = queue.Queue()
+        self._cola = queue.Queue(maxsize=2000)
         self.cancel_event = None
         self._hilo_proceso = None
         self._seleccion_preview_vigente = None
@@ -1203,6 +1296,14 @@ class Aplicacion(QMainWindow):
         self._preview_cancel_event = threading.Event()
         self._preview_operaciones = []
         self._history_current = []
+        self._history_operations = []
+        self._reversion_context = None
+        self._reversion_decision = None
+        self._confirmacion_ejecucion_event = None
+        self._confirmacion_ejecucion_aceptada = False
+        self._metricas_archivos_cache = {}
+        self._metricas_en_curso = {}
+        self._metricas_versiones = {}
         self._navigation_buttons = {}
         self._page_names = {}
 
@@ -1600,6 +1701,7 @@ class Aplicacion(QMainWindow):
         self.log_text = QPlainTextEdit()
         self.log_text.setReadOnly(True)
         self.log_text.setMinimumHeight(150)
+        self.log_text.setMaximumBlockCount(2000)
         lf.addWidget(self.log_text)
         layout.addWidget(log_frame, 1)
         return page
@@ -1625,19 +1727,30 @@ class Aplicacion(QMainWindow):
             if origen:
                 origenes.add(origen)
 
-        total_archivos = 0
-        for origen in origenes:
-            if os.path.isdir(origen):
-                try:
-                    for _, _, archivos in os.walk(origen):
-                        total_archivos += len(archivos)
-                except OSError:
-                    pass
+        clave_origenes = tuple(sorted(origenes))
+        cache = self._metricas_archivos_cache.get(clave_origenes)
+        total_archivos = (
+            cache[0]
+            if cache is not None and time.monotonic() - cache[1] < 30
+            else None
+        )
+        if total_archivos is None:
+            self.metric_archivos.metric_label.setText("…")
+            if clave_origenes not in self._metricas_en_curso:
+                version = self._metricas_versiones.get(clave_origenes, 0)
+                self._metricas_en_curso[clave_origenes] = version
+                threading.Thread(
+                    target=self._contar_archivos_origenes,
+                    args=(clave_origenes, version),
+                    daemon=True,
+                    name="HiloConteoArchivos",
+                ).start()
+        else:
+            self.metric_archivos.metric_label.setText(str(total_archivos))
 
         coincidencias = len(self._preview_operaciones)
         procesados = self._contar_procesados_historial()
         self.metric_carpetas.metric_label.setText(str(len(origenes)))
-        self.metric_archivos.metric_label.setText(str(total_archivos))
         self.metric_coincidencias.metric_label.setText(str(coincidencias))
         self.metric_procesados.metric_label.setText(str(procesados))
         self.boton_iniciar.setEnabled(bool(self.reglas) and not self._procesando)
@@ -1646,6 +1759,19 @@ class Aplicacion(QMainWindow):
             self.var_estado.setText("Crea al menos una regla para comenzar.")
         elif not self._procesando:
             self.var_estado.setText("Listo para iniciar.")
+
+    def _contar_archivos_origenes(self, origenes, version):
+        total_archivos = 0
+        for origen in origenes:
+            if os.path.isdir(origen):
+                for _, _, archivos in os.walk(origen):
+                    total_archivos += len(archivos)
+        self._ui_callback({
+            "tipo": "metricas_archivos",
+            "origenes": origenes,
+            "version": version,
+            "valor": total_archivos,
+        })
 
     # ------------------------------------------------------------------
     # Organizar / Preview
@@ -1793,6 +1919,8 @@ class Aplicacion(QMainWindow):
             if tipo == "analisis":
                 self.preview_barra.setValue(int(dato.get("valor", 0)))
                 self.preview_barra_label.setText(str(dato.get("texto", "Analizando...")))
+            elif tipo == "analisis_indeterminado":
+                self.preview_barra.setRange(0, 0)
             elif tipo == "preview_total":
                 self.preview_barra_label.setText(
                     f"Análisis completado: {dato.get('valor', 0)} operaciones detectadas."
@@ -1800,13 +1928,16 @@ class Aplicacion(QMainWindow):
             elif tipo == "preview_done":
                 self._preview_operaciones = dato.get("data", [])
                 self._refrescar_preview()
+                self.preview_barra.setRange(0, 100)
                 self.preview_barra.setValue(100)
                 self.preview_barra_label.setText("Vista previa lista.")
                 self._actualizar_resumen_inicio()
             elif tipo == "preview_error":
+                self.preview_barra.setRange(0, 100)
                 QMessageBox.critical(self, "Error en análisis", dato.get("mensaje", "Error desconocido."))
                 self.preview_barra_label.setText("Error durante el análisis.")
             elif tipo == "preview_cancelado":
+                self.preview_barra.setRange(0, 100)
                 self.preview_barra_label.setText("Análisis cancelado.")
 
         if self.content_stack.currentWidget() is not None:
@@ -2609,6 +2740,13 @@ class Aplicacion(QMainWindow):
             "estado": "cancelado" if dato.get("cancelado") else "error" if dato.get("error") else "finalizado",
             "mensajes": list(self._history_current),
         }
+        if self._history_operations:
+            registro["operaciones"] = list(self._history_operations)
+        if dato.get("tipo") == "reversion":
+            registro.update({
+                "tipo": "reversion",
+                "reversion_of": dato.get("reversion_of"),
+            })
         try:
             with open(ruta, "a", encoding="utf-8") as archivo:
                 archivo.write(json.dumps(registro, ensure_ascii=False) + "\n")
@@ -2700,13 +2838,26 @@ class Aplicacion(QMainWindow):
                 header.addWidget(estado_label)
                 l.addLayout(header)
                 mensajes = registro.get("mensajes", [])
-                resumen = QLabel(f"{len(mensajes)} eventos registrados")
+                operaciones = registro.get("operaciones", [])
+                if not isinstance(operaciones, list):
+                    operaciones = []
+                resumen = QLabel(
+                    f"{len(operaciones)} operaciones registradas"
+                    if operaciones else f"{len(mensajes)} eventos registrados"
+                )
                 resumen.setObjectName("small_muted")
                 l.addWidget(resumen)
                 detalles = QPlainTextEdit("\n".join(mensajes[-25:]))
                 detalles.setReadOnly(True)
                 detalles.setMaximumHeight(150)
                 l.addWidget(detalles)
+                if operaciones and registro.get("tipo") != "reversion":
+                    boton_revertir = self._crear_boton(
+                        f"Revertir ({len(operaciones)})",
+                        lambda checked=False, r=registro: self._iniciar_reversion(r),
+                        ghost=True,
+                    )
+                    l.addWidget(boton_revertir)
                 self.historial_layout.addWidget(card)
         self.historial_layout.addStretch(1)
 
@@ -2780,15 +2931,64 @@ class Aplicacion(QMainWindow):
         if self.log_text is not None:
             self.log_text.appendPlainText(texto)
 
+    def _iniciar_reversion(self, registro):
+        if self._procesando:
+            QMessageBox.information(self, "FileFlow", "Hay otro proceso en ejecución.")
+            return
+        operaciones = registro.get("operaciones")
+        if not isinstance(operaciones, list) or not operaciones:
+            return
+        self._history_current = []
+        self.log_text.clear()
+        self._procesando = True
+        self.cancel_event = threading.Event()
+        self._reversion_context = {
+            "registro": registro,
+            "resultados": None,
+            "decision_event": threading.Event(),
+        }
+        self.boton_iniciar.setEnabled(False)
+        self.boton_cancelar.setEnabled(True)
+        self.var_estado.setText("Analizando reversión...")
+        self._hilo_proceso = threading.Thread(
+            target=self._ejecutar_reversion_worker,
+            args=(operaciones,),
+            daemon=True,
+            name="HiloReversion",
+        )
+        self._hilo_proceso.start()
+
+    def _ejecutar_reversion_worker(self, operaciones):
+        try:
+            self._ui_callback({"tipo": "log", "mensaje": "Inicio de análisis de reversión..."})
+            resultados = analizar_reversion(operaciones, self.cancel_event, self._ui_callback)
+            self._ui_callback({"tipo": "reversion_analisis", "resultados": resultados})
+            self._reversion_context["decision_event"].wait()
+            if not self._reversion_decision:
+                self._ui_callback({"tipo": "terminado", "cancelado": True, "error": None})
+                return
+            self._ui_callback({"tipo": "log", "mensaje": "Iniciando reversión..."})
+            revertidas = ejecutar_reversion(resultados, self._ui_callback, self.cancel_event)
+            self._ui_callback({
+                "tipo": "reversion_terminado",
+                "revertidas": revertidas,
+                "reversion_of": self._reversion_context["registro"].get("fecha"),
+            })
+        except Exception as exc:
+            self._ui_callback({"tipo": "error", "mensaje": str(exc)})
+            self._ui_callback({"tipo": "terminado", "cancelado": False, "error": str(exc)})
+
     def _ui_callback(self, dato):
         self._cola.put(dato)
 
     def _procesar_cola(self):
-        while True:
+        procesados_cola = 0
+        while procesados_cola < 100:
             try:
                 dato = self._cola.get_nowait()
             except queue.Empty:
                 break
+            procesados_cola += 1
 
             tipo = dato.get("tipo")
             if tipo == "actual":
@@ -2799,12 +2999,114 @@ class Aplicacion(QMainWindow):
                     self.var_estado.setText(dato["estado"])
             elif tipo == "analisis":
                 self.var_progreso_analisis = float(dato.get("valor", 0))
-                self.barra_analisis.setValue(int(self.var_progreso_analisis))
+                if self.barra_analisis.maximum() != 0 or self.var_progreso_analisis >= 100:
+                    self.barra_analisis.setRange(0, 100)
+                    self.barra_analisis.setValue(int(self.var_progreso_analisis))
                 self.var_texto_analisis.setText(dato.get("texto", "0% analizado"))
+            elif tipo == "analisis_indeterminado":
+                self.barra_analisis.setRange(0, 0)
+                self.var_texto_analisis.setText("Analizando archivos...")
+            elif tipo == "metricas_archivos":
+                origenes = tuple(dato.get("origenes", ()))
+                version = dato.get("version")
+                if self._metricas_en_curso.get(origenes) != version:
+                    continue
+                self._metricas_en_curso.pop(origenes, None)
+                valor = int(dato.get("valor", 0))
+                self._metricas_archivos_cache[origenes] = (valor, time.monotonic())
+                clave_actual = tuple(sorted({
+                    normalizar_ruta_regla(regla.get("origen", ""))
+                    for regla in self.reglas
+                    if normalizar_ruta_regla(regla.get("origen", ""))
+                }))
+                if clave_actual == origenes:
+                    self.metric_archivos.metric_label.setText(str(valor))
             elif tipo == "estado":
                 self.var_estado.setText(dato.get("estado", "Listo para iniciar."))
             elif tipo == "log":
                 self._registrar_log(dato.get("mensaje", ""))
+            elif tipo == "operacion_completada":
+                self._history_operations.append(dict(dato.get("operacion", {})))
+            elif tipo == "reversion_item":
+                operacion = dato.get("operacion", {})
+                estado = operacion.get("status", "unsafe")
+                nombre = os.path.basename(operacion.get("path", ""))
+                self._registrar_log(f"Verificado: {nombre} ({estado})")
+            elif tipo == "reversion_analisis":
+                resultados = dato.get("resultados", [])
+                self._reversion_context["resultados"] = resultados
+                seguros = [r for r in resultados if r.get("status") == "safe"]
+                problemas = [r for r in resultados if r.get("status") != "safe"]
+                etiquetas = {
+                    "missing": "no encontrado",
+                    "modified": "modificado",
+                    "conflict": "conflicto",
+                    "already_reverted": "ya revertido",
+                    "unsafe": "no verificable",
+                }
+                detalle = "\n".join(
+                    f"• {r.get('path', '')}: {etiquetas.get(r.get('status'), r.get('status'))}"
+                    for r in problemas
+                ) or "Ningún archivo presenta problemas."
+                mensaje = QMessageBox(self)
+                mensaje.setIcon(QMessageBox.Warning if problemas else QMessageBox.Information)
+                mensaje.setWindowTitle("Confirmar reversión")
+                mensaje.setText(f"{len(seguros)} archivos pueden revertirse.")
+                mensaje.setInformativeText(
+                    f"{len(problemas)} archivos se omitirán por seguridad.\n\n{detalle}"
+                )
+                mensaje.addButton("Cancelar", QMessageBox.RejectRole)
+                continuar = mensaje.addButton(
+                    f"Continuar con {len(seguros)} archivos", QMessageBox.AcceptRole
+                )
+                self._reversion_decision = mensaje.exec() and mensaje.clickedButton() == continuar
+                self._reversion_context["decision_event"].set()
+            elif tipo == "ejecucion_preparada":
+                cuenta_eliminar = dato.get("cuenta_eliminar", 0)
+                aceptada = True
+                if cuenta_eliminar:
+                    mensaje = QMessageBox(self)
+                    mensaje.setIcon(QMessageBox.Warning)
+                    mensaje.setWindowTitle("Confirmar eliminación de duplicados")
+                    mensaje.setText(
+                        f"Esta operación eliminará {cuenta_eliminar} archivos del origen."
+                    )
+                    mensaje.setInformativeText("Esta acción no se puede deshacer.")
+                    mensaje.addButton("Cancelar", QMessageBox.RejectRole)
+                    btn_delete = mensaje.addButton(
+                        f"Eliminar {cuenta_eliminar} archivos", QMessageBox.AcceptRole
+                    )
+                    mensaje.exec()
+                    aceptada = mensaje.clickedButton() == btn_delete
+                if not aceptada:
+                    self._registrar_log(
+                        "Operación cancelada por el usuario (confirmación de eliminación)."
+                    )
+                self._confirmacion_ejecucion_aceptada = aceptada
+                if self._confirmacion_ejecucion_event is not None:
+                    self._confirmacion_ejecucion_event.set()
+            elif tipo == "reversion_terminado":
+                revertidas = {
+                    item.get("operation_id") for item in dato.get("revertidas", [])
+                }
+                self._history_operations = []
+                for resultado in self._reversion_context.get("resultados", []):
+                    registro_operacion = dict(resultado)
+                    if registro_operacion.get("operation_id") in revertidas:
+                        registro_operacion["status"] = "reverted"
+                    self._history_operations.append(registro_operacion)
+                self._history_current.append(
+                    f"Reversión completada: {len(revertidas)} archivos revertidos."
+                )
+                self._guardar_historial_proceso({
+                    "tipo": "reversion",
+                    "reversion_of": dato.get("reversion_of"),
+                })
+                self._procesando = False
+                self.boton_cancelar.setEnabled(False)
+                self.boton_iniciar.setEnabled(bool(self.reglas))
+                self._reversion_context = None
+                self._actualizar_historial_ui()
             elif tipo in ("total", "total_archivos"):
                 self.var_total_archivos.setText(f"Operaciones preparadas: {dato.get('valor', 0)}")
             elif tipo == "error":
@@ -2819,6 +3121,7 @@ class Aplicacion(QMainWindow):
                 self.boton_iniciar.setEnabled(bool(self.reglas))
                 self.boton_cancelar.setEnabled(False)
                 self._guardar_historial_proceso(dato)
+                self._history_operations = []
                 if error is not None:
                     self.var_estado.setText(f"Error: {error}")
                 elif cancelado:
@@ -2830,7 +3133,21 @@ class Aplicacion(QMainWindow):
                     self.var_texto_actual.setText("100%")
                     self.var_texto_analisis.setText("100% procesado")
                 self.cancel_event = None
+                self.barra_analisis.setRange(0, 100)
+                self._confirmacion_ejecucion_event = None
+                self._reversion_context = None
+                self._reversion_decision = None
                 self._actualizar_historial_ui()
+                origenes = tuple(sorted({
+                    normalizar_ruta_regla(regla.get("origen", ""))
+                    for regla in self.reglas
+                    if normalizar_ruta_regla(regla.get("origen", ""))
+                }))
+                self._metricas_versiones[origenes] = (
+                    self._metricas_versiones.get(origenes, 0) + 1
+                )
+                self._metricas_en_curso.pop(origenes, None)
+                self._metricas_archivos_cache.pop(origenes, None)
                 self._actualizar_resumen_inicio()
 
     def _cancelar_proceso(self):
@@ -2839,6 +3156,12 @@ class Aplicacion(QMainWindow):
         evento = self.cancel_event
         if evento is not None:
             evento.set()
+        self._confirmacion_ejecucion_aceptada = False
+        if self._confirmacion_ejecucion_event is not None:
+            self._confirmacion_ejecucion_event.set()
+        if self._reversion_context is not None:
+            self._reversion_decision = False
+            self._reversion_context["decision_event"].set()
         self.var_estado.setText("Cancelando proceso...")
         self.boton_cancelar.setEnabled(False)
 
@@ -2865,88 +3188,108 @@ class Aplicacion(QMainWindow):
             if not operaciones_previas:
                 self._seleccion_preview_vigente = None
 
-        if operaciones_previas is None:
-            try:
-                ops_para_confirmacion = generar_vista_previa(reglas_para_proceso, biblioteca=self.biblioteca_completa)
-            except Exception as exc:
-                QMessageBox.critical(self, "Error", f"No se pudo preparar la ejecución:\n{exc}")
-                return
-        else:
-            ops_para_confirmacion = operaciones_previas
-
-        cuenta_eliminar = sum(
-            1 for op in ops_para_confirmacion
-            if op.get("duplicado") and op.get("eliminar_duplicados", False)
-        )
-        if cuenta_eliminar > 0:
-            mensaje = QMessageBox(self)
-            mensaje.setIcon(QMessageBox.Warning)
-            mensaje.setWindowTitle("Confirmar eliminación de duplicados")
-            mensaje.setText(f"Esta operación eliminará {cuenta_eliminar} archivos del origen.")
-            mensaje.setInformativeText("Esta acción no se puede deshacer.")
-            mensaje.addButton("Cancelar", QMessageBox.RejectRole)
-            btn_delete = mensaje.addButton(f"Eliminar {cuenta_eliminar} archivos", QMessageBox.AcceptRole)
-            mensaje.exec()
-            if mensaje.clickedButton() != btn_delete:
-                self._registrar_log("Operación cancelada por el usuario (confirmación de eliminación).")
-                return
-
         self._history_current = []
+        self._history_operations = []
         self.log_text.clear()
         self.var_estado.setText("Iniciando proceso...")
         self.barra_actual.setValue(0)
+        self.barra_analisis.setRange(0, 100)
         self.barra_analisis.setValue(0)
         self.var_texto_actual.setText("0%")
         self.var_texto_analisis.setText("0% analizado")
         self.var_total_archivos.setText("Preparando operaciones...")
-        self._cola = queue.Queue()
+        self._cola = queue.Queue(maxsize=2000)
         self._procesando = True
         self.cancel_event = threading.Event()
+        self._confirmacion_ejecucion_event = threading.Event()
+        self._confirmacion_ejecucion_aceptada = False
         self.boton_iniciar.setEnabled(False)
         self.boton_cancelar.setEnabled(True)
 
         if operaciones_previas is not None:
             self._registrar_log("Inicio del proceso desde la selección de Organizar.")
-            for idx, op in enumerate(operaciones_previas, start=1):
-                self._registrar_log(
-                    f"{idx}. {op.get('archivo', '')} | Regla: {op.get('regla', '')} | Acción: {op.get('accion', '')} | Destino: {op.get('destino_final', op.get('destino', ''))}"
-                )
-
-        def ejecutar():
-            error = None
-            cancelado = False
-            try:
-                if operaciones_previas is not None:
-                    ejecutar_operaciones(
-                        operaciones_previas,
-                        ui_callback=self._ui_callback,
-                        cancel_event=self.cancel_event,
-                    )
-                else:
-                    procesar_archivos(
-                        reglas=reglas_para_proceso,
-                        ui_callback=self._ui_callback,
-                        cancel_event=self.cancel_event,
-                        biblioteca=self.biblioteca_completa,
-                    )
-                cancelado = self.cancel_event.is_set()
-            except Exception as exc:
-                if self.cancel_event is not None and self.cancel_event.is_set():
-                    cancelado = True
-                    self._ui_callback({"tipo": "log", "mensaje": "Proceso cancelado por el usuario."})
-                else:
-                    error = str(exc)
-                    self._ui_callback({"tipo": "error", "mensaje": error})
-            finally:
-                self._seleccion_preview_vigente = None
-                self._ui_callback({"tipo": "terminado", "cancelado": cancelado, "error": error})
+            self._registrar_log(f"Operaciones seleccionadas en Organizar: {len(operaciones_previas)}")
 
         self._hilo_proceso = threading.Thread(
-            target=ejecutar,
+            target=self._ejecutar_proceso_worker,
+            args=(
+                reglas_para_proceso,
+                operaciones_previas,
+                dict(self.biblioteca_completa),
+                self.cancel_event,
+                self._confirmacion_ejecucion_event,
+            ),
             daemon=True,
             name="HiloProcesamiento"
         )
         self._hilo_proceso.start()
+
+    def _ejecutar_proceso_worker(
+        self, reglas, operaciones_previas, biblioteca, cancel_event, confirmacion_event
+    ):
+        error = None
+        cancelado = False
+        try:
+            if operaciones_previas is None:
+                self._ui_callback({"tipo": "estado", "estado": "Analizando reglas y archivos..."})
+                self._ui_callback({"tipo": "log", "mensaje": f"Reglas activas: {len(reglas)}"})
+                for indice, regla in enumerate(reglas, start=1):
+                    self._ui_callback({
+                        "tipo": "log",
+                        "mensaje": f"{indice}. {', '.join(regla['palabras'])} -> {regla['origen']} -> {regla['destino']}",
+                    })
+                operaciones = generar_vista_previa(
+                    reglas,
+                    ui_callback=self._ui_callback,
+                    cancel_event=cancel_event,
+                    biblioteca=biblioteca,
+                )
+            else:
+                operaciones = operaciones_previas
+
+            if cancel_event.is_set():
+                raise RuntimeError("Proceso cancelado por el usuario.")
+            total = len(operaciones)
+            self._ui_callback({"tipo": "total", "valor": total})
+            if total == 0:
+                self._ui_callback({"tipo": "estado", "estado": "Sin coincidencias por procesar."})
+                self._ui_callback({
+                    "tipo": "log",
+                    "mensaje": "No se encontraron coincidencias con ninguna regla activa.",
+                })
+                return
+
+            cuenta_eliminar = sum(
+                1 for op in operaciones
+                if op.get("duplicado") and op.get("eliminar_duplicados", False)
+            )
+            self._ui_callback({
+                "tipo": "ejecucion_preparada",
+                "cuenta_eliminar": cuenta_eliminar,
+            })
+            confirmacion_event.wait()
+            if not self._confirmacion_ejecucion_aceptada or cancel_event.is_set():
+                cancelado = True
+                return
+
+            if operaciones_previas is None:
+                self._ui_callback({"tipo": "log", "mensaje": f"Operaciones preparadas: {total}"})
+            ejecutar_operaciones(
+                operaciones,
+                ui_callback=self._ui_callback,
+                cancel_event=cancel_event,
+            )
+            cancelado = cancel_event.is_set()
+        except Exception as exc:
+            if cancel_event.is_set():
+                cancelado = True
+                self._ui_callback({"tipo": "log", "mensaje": "Proceso cancelado por el usuario."})
+            else:
+                error = str(exc)
+                self._ui_callback({"tipo": "error", "mensaje": error})
+        finally:
+            self._seleccion_preview_vigente = None
+            self._ui_callback({"tipo": "terminado", "cancelado": cancelado, "error": error})
 
     # ------------------------------------------------------------------
     # utilidades
